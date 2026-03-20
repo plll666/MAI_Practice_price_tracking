@@ -17,7 +17,7 @@
 cp .env_example .env
 ```
 
-### 2. Запуск проекта
+### 2. Запуск бд
 ```
 docker-compose up --build
 ```
