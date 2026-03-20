@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:15
+    container_name: price_tracker_db
+    env_file:
+      - .env_db
+    ports:
+      - "45432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  app:
+    build: .
+    container_name: price_app_service
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env_db
+    volumes:
+      - .:/app
+    command: >
+      sh -c "alembic upgrade head && python main_db.py"
+
+volumes:
+  postgres_data:

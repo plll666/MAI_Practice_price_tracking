@@ -1,0 +1,32 @@
+# 1. Окружение
+.env/
+venv/
+env/
+ENV/
+.env_example
+
+# 2. Кэш Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# 3. Секреты и конфигурация
+.env
+.env_db
+.vscode/
+.idea/
+
+# 4. База данных и логи (если они лежат в папке проекта)
+postgres_data/
+*.log
+
+# 5. Git
+.git
+.gitignore
+
+# 6. Docker-специфичные файлы
+Dockerfile
+docker-compose.yml
+.dockerignore
