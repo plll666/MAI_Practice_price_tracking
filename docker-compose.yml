@@ -16,7 +16,7 @@ services:
     restart: always
 
   app:
-    build: .
+    build: ./backend
     container_name: price_app_service
     depends_on:
       db:
@@ -24,9 +24,9 @@ services:
     env_file:
       - .env_db
     volumes:
-      - .:/app
+      - ./backend:/app/backend
     command: >
-      sh -c "alembic upgrade head && python main_db.py"
+      sh -c "cd src && alembic upgrade head && python main.py"
 
 volumes:
   postgres_data:

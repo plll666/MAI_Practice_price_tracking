@@ -1,4 +1,4 @@
-from database import wait_db
+from src.database.database import wait_db
 
 if __name__ == "__main__":
     if wait_db():

@@ -18,15 +18,15 @@ ENV/
 .vscode/
 .idea/
 
-# 4. База данных и логи (если они лежат в папке проекта)
+
 postgres_data/
 *.log
 
-# 5. Git
+
 .git
 .gitignore
 
 # 6. Docker-специфичные файлы
-Dockerfile
-docker-compose.yml
+../../Dockerfile
+../../../docker-compose.yml
 .dockerignore
