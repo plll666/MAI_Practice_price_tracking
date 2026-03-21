@@ -1,0 +1,13 @@
+bcrypt==5.0.0
+ecdsa==0.19.1
+greenlet==3.3.2
+passlib==1.7.4
+psycopg2-binary==2.9.11
+pyasn1==0.6.3
+python-dotenv==1.2.2
+python-jose==3.5.0
+python-multipart==0.0.22
+rsa==4.9.1
+six==1.17.0
+SQLAlchemy==2.0.48
+typing_extensions==4.15.0

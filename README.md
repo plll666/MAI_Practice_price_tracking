@@ -1,41 +1,93 @@
 # Price Tracking System
-## Database Service
+## Backend & Database Service
 
-Развертывание базы данных для проекта. Развертывание происходит через Docker
+Сервис бэкенда и базы данных для системы мониторинга цен. Реализован на FastAPI с использованием PostgreSQL.
+
 ## Технологии
 * **Python 3.11** 
-* **PostgreSQL**
-* **SQLAlchemy**
-* **Alembic**
+* **FastAPI** (Web Framework)
+* **PostgreSQL** (Database)
+* **SQLAlchemy** (ORM)
+* **Alembic** (Migrations)
+* **Pydantic** (Validation & Schema)
 * **Docker & Docker Compose**
 
 ## Быстрый старт
 
 ### 1. Подготовка окружения
-Создайте файл `.env_db` в корне папки `database` на основе примера, поменяв внутри перемынные окружения:
+Создайте файл `.env` в корне проекта на основе примера.
+
 ```bash
 cp .env_example .env
 ```
+### 2. Запуск приложения
+#### Вариант А: Локальный запуск (для разработки)
+Создайте виртуальное окружение:
+```Bash
 
-### 2. Запуск бд
+    python -m venv .venv
+    source .venv/bin/activate  # Для Linux/MacOS
+    # .venv\Scripts\activate   # Для Windows
 ```
+Установите зависимости:
+
+```Bash
+
+    pip install -r requirements.txt
+```
+Запустите сервер:
+
+```Bash
+
+    python src/main.py
+```
+
+Сервер будет доступен по адресу: http://localhost:8000
+
+#### Вариант Б: Запуск через Docker
+
+```Bash
+
 docker-compose up --build
 ```
-### 3. Структура проекта
-models.py — описание таблиц.
 
-database.py — конфиг подключения.
+## API и Документация
 
-migrations/ — история изменений базы.
+Автоматическая документация API доступна после запуска сервера:
 
-alembic.ini — настройки инструмента миграций.
+    Swagger UI: http://localhost:8000/docs
+    ReDoc: http://localhost:8000/redoc
 
-### 4. Работа с миграциями
-Если меняете models.py создайте новую миграцию:
+Основные эндпоинты:
+
+    POST /auth/register — Регистрация нового пользователя.
+    POST /auth/login — Аутентификация и получение JWT токена.
+
+Структура проекта
+
+    src/api/ — Роутеры и обработчики HTTP-запросов.
+    src/core/ — Конфигурация, безопасность (JWT, хеширование) и логирование.
+    src/database/ — Подключение к БД и модели SQLAlchemy.
+    src/repositories/ — Слой доступа к данным (CRUD операции).
+    src/schemas/ — Pydantic-схемы для валидации данных.
+    migrations/ — Миграции базы данных (Alembic).
+
+## Работа с миграциями (Alembic)
+
+Если вы изменили models.py, необходимо создать миграцию:
+
+#### Локально:
+
+```Bash
+
+alembic revision --autogenerate -m "Описание изменений"
+alembic upgrade head
 ```
+
+#### Через Docker:
+
+```Bash
+
 docker-compose run --rm app alembic revision --autogenerate -m "Описание изменений"
-```
-Затем примените её:
-```
 docker-compose run --rm app alembic upgrade head
 ```

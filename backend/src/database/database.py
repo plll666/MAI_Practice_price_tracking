@@ -2,23 +2,30 @@ import os
 import time
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, declarative_base  # Добавили
 from sqlalchemy.exc import OperationalError
 
-load_dotenv(".env_db") 
+load_dotenv(".env")
 
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
 db_name = os.getenv("POSTGRES_DB")
-host = os.getenv("DB_HOST", "db") 
+host = os.getenv("DB_HOST", "localhost")  # Если запускаешь локально без докера, может быть localhost
 port = os.getenv("DB_PORT", "5432")
 
 DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
+
+# create_engine - синхронный движок
 engine = create_engine(DATABASE_URL)
+
+# Фабрика для создания сессий
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def wait_db():
     for i in range(5):
         try:
-            print(f"Проверка связи с БД ({i+1}/5)...")
+            print(f"Проверка связи с БД ({i + 1}/5)...")
             with engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
             print("База доступна")
@@ -26,6 +33,15 @@ def wait_db():
         except OperationalError:
             print("База еще загружается. Ждем 3 секунды...")
             time.sleep(3)
-    
+
     print("Error: база так и не ответила.")
     return False
+
+
+# Dependency (Зависимость для FastAPI)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
