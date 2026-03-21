@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base  # Добавили
 from sqlalchemy.exc import OperationalError
 
-load_dotenv(".env_db")
+load_dotenv(".env")
 
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
