@@ -1,47 +1,36 @@
 import os
-import time
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base  # Добавили
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-load_dotenv(".env")
+load_dotenv()
 
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
 db_name = os.getenv("POSTGRES_DB")
-host = os.getenv("DB_HOST", "localhost")  # Если запускаешь локально без докера, может быть localhost
+host = os.getenv("DB_HOST", "localhost")
 port = os.getenv("DB_PORT", "5432")
 
-DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
+DATABASE_URL = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
 
-# create_engine - синхронный движок
-engine = create_engine(DATABASE_URL)
+engine = create_async_engine(DATABASE_URL, echo=True)
 
-# Фабрика для создания сессий
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 
-def wait_db():
-    for i in range(5):
+async def get_db():
+    """
+        Зависимость, предоставляющая асинхронную сессию с базой данных.
+
+        Результат:
+
+        AsyncSession: сессия SQLAlchemy для взаимодействия с базой данных.
+    """
+    async with AsyncSessionLocal() as session:
         try:
-            print(f"Проверка связи с БД ({i + 1}/5)...")
-            with engine.connect() as connection:
-                connection.execute(text("SELECT 1"))
-            print("База доступна")
-            return True
-        except OperationalError:
-            print("База еще загружается. Ждем 3 секунды...")
-            time.sleep(3)
-
-    print("Error: база так и не ответила.")
-    return False
-
-
-# Dependency (Зависимость для FastAPI)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+            yield session
+        finally:
+            await session.close()

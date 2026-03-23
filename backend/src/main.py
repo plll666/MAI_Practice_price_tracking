@@ -12,15 +12,9 @@ setup_logging()
 # 2. Lifespan - способ управления событиями
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Application startup: Waiting for DB...")
-    if wait_db():
-        logger.info("DB connection established.")
-    else:
-        logger.error("Failed to connect to DB.")
-
-    yield  # Здесь приложение работает
-
-    logger.info("Application shutdown.")
+    logger.info("Application startup")
+    yield
+    logger.info("Application shutdown")
 
 
 # 3. Создаем приложение с lifespan
