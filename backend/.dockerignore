@@ -1,9 +1,9 @@
 # 1. Окружение
-.env/
+../.env/
 venv/
 env/
 ENV/
-.env_example
+../.env.example
 
 # 2. Кэш Python
 **/__pycache__/
@@ -13,7 +13,7 @@ ENV/
 .mypy_cache/
 
 # 3. Секреты и конфигурация
-.env
+../.env
 .env_db
 .vscode/
 .idea/

@@ -1,7 +1,7 @@
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from src.database.database import wait_db
+
 from src.api.auth import router as auth_router
 from src.core.logger import setup_logging, logger
 

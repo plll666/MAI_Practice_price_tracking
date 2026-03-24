@@ -3,7 +3,7 @@ services:
     image: postgres:15
     container_name: price_tracker_db
     env_file:
-      - .env_db
+      - .env
     ports:
       - "45432:5432"
     healthcheck:
@@ -17,12 +17,16 @@ services:
 
   app:
     build: ./backend
+    ports:
+      - "8000:8000"
     container_name: price_app_service
     depends_on:
       db:
         condition: service_healthy
     env_file:
-      - .env_db
+      - .env
+    environment:
+      DB_HOST: db
     volumes:
       - ./backend:/app/backend
     command: >
