@@ -1,15 +1,13 @@
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.auth import router as auth_router
 from src.core.logger import setup_logging, logger
 
-# 1. Настраиваем логирование при старте
 setup_logging()
 
-
-# 2. Lifespan - способ управления событиями
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup")
@@ -17,13 +15,22 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown")
 
 
-# 3. Создаем приложение с lifespan
 app = FastAPI(
     title="Price Tracker API",
     lifespan=lifespan
 )
 
-# Подключаем роутеры
+origins = [
+    "*",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth_router)
 
 
@@ -32,9 +39,7 @@ def read_root():
     return {"message": "Service is running"}
 
 
-# 4. Запуск сервера
 if __name__ == "__main__":
-    # Теперь при запуске python src/main.py сервер будет висеть и слушать порт
     uvicorn.run(
         "src.main:app",
         host="0.0.0.0",
