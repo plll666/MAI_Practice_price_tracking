@@ -1,0 +1,361 @@
+.container {
+  padding: 2rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--foreground);
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.section {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--gray-50);
+}
+
+.dark .sectionHeader {
+  background-color: var(--gray-900);
+}
+
+.sectionIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.sectionTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sectionContent {
+  padding: 1.5rem;
+}
+
+.settingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settingItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settingItem:first-child {
+  padding-top: 0;
+}
+
+.settingInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settingIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.dangerIcon {
+  color: var(--red-500);
+}
+
+.settingLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  margin-bottom: 0.25rem;
+}
+
+.dangerLabel {
+  color: var(--red-600);
+}
+
+.dark .dangerLabel {
+  color: var(--red-400);
+}
+
+.settingDescription {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.select {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--blue-500);
+}
+
+.toggle {
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.toggleOn {
+  background-color: var(--blue-600);
+}
+
+.toggleOff {
+  background-color: var(--gray-300);
+}
+
+.dark .toggleOff {
+  background-color: var(--gray-600);
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: white;
+  border-radius: 9999px;
+  transition: transform 0.2s;
+}
+
+.toggleKnobOn {
+  transform: translateX(1.25rem);
+}
+
+.exportButton, .clearButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.exportButton {
+  background-color: var(--gray-100);
+  color: var(--foreground);
+}
+
+.exportButton:hover {
+  background-color: var(--gray-200);
+}
+
+.dark .exportButton {
+  background-color: var(--gray-800);
+}
+
+.dark .exportButton:hover {
+  background-color: var(--gray-700);
+}
+
+.clearButton {
+  background-color: var(--red-50);
+  color: var(--red-600);
+}
+
+.clearButton:hover {
+  background-color: var(--red-100);
+}
+
+.dark .clearButton {
+  background-color: var(--red-900-20);
+  color: var(--red-400);
+}
+
+.dark .clearButton:hover {
+  background-color: var(--red-900-30);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statValue {
+  font-size: 1.875rem;
+  font-weight: 300;
+  color: var(--foreground);
+  margin-bottom: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}
+
+.input {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  width: 250px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--blue-500);
+}
+
+.toggleGroup {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.testButton {
+  padding: 0.5rem 1rem;
+  background-color: var(--gray-100);
+  color: var(--foreground);
+  font-size: 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.testButton:hover {
+  background-color: var(--gray-200);
+}
+
+.dark .testButton {
+  background-color: var(--gray-800);
+}
+
+.dark .testButton:hover {
+  background-color: var(--gray-700);
+}
+
+.saveSection {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.saveButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.successMessage {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: var(--green-50);
+  color: var(--green-600);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.dark .successMessage {
+  background-color: var(--green-900-20);
+  color: var(--green-400);
+}
+
+.errorMessage {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: var(--red-50);
+  color: var(--red-600);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.dark .errorMessage {
+  background-color: var(--red-900-20);
+  color: var(--red-400);
+}
+
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}

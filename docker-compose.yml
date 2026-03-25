@@ -31,6 +31,18 @@ services:
       - ./backend:/app/backend
     command: >
       sh -c "cd src && alembic upgrade head && python main.py"
+  
+   frontend:
+    container_name: price_tracker_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
+    environment:
+      VITE_API_URL: http://localhost:8000
 
 volumes:
   postgres_data:

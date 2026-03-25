@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Price Tracker - Мониторинг цен</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="error-boundary" style="display: none; padding: 20px; font-family: monospace;"></div>
+    <script>
+      window.addEventListener('error', function(event) {
+        console.error('Global error:', event.error);
+        const errorDiv = document.getElementById('error-boundary');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.innerHTML = '<h1>Error!</h1><pre>' + (event.error?.stack || event.message) + '</pre>';
+        }
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('Unhandled rejection:', event.reason);
+        const errorDiv = document.getElementById('error-boundary');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.innerHTML = '<h1>Promise Error!</h1><pre>' + (event.reason?.stack || event.reason) + '</pre>';
+        }
+      });
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
