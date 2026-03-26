@@ -1,6 +1,9 @@
 services:
   db:
     image: postgres:15
+    environment:
+      - TZ=Europe/Moscow
+      - PGTZ=Europe/Moscow
     container_name: price_tracker_db
     env_file:
       - .env
@@ -29,6 +32,8 @@ services:
       DB_HOST: db
     volumes:
       - ./backend:/app/backend
+    init: true
+    ipc: host
     command: >
       sh -c "cd src && alembic upgrade head && python main.py"
   

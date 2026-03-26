@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger, Numeric, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger, Numeric, DateTime, Text, JSON, func
 from sqlalchemy.orm import declarative_base, relationship
-from datetime import datetime, timezone
 
 Base = declarative_base()
 
@@ -22,7 +21,7 @@ class Products(Base):
     brand = Column(String(100))
     properties = Column(JSON)
     image_url = Column(Text)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, server_default=func.now())
 
     product_links = relationship("ProductLinks", back_populates="product")
     subscriptions = relationship("Subscriptions", back_populates="product")
@@ -46,7 +45,7 @@ class PriceHistory(Base):
     id = Column(BigInteger, primary_key=True)
     link_id = Column(Integer, ForeignKey('product_links.id'))
     price = Column(Numeric(12, 2))
-    parsed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    parsed_at = Column(DateTime, server_default=func.now())
 
     product_link = relationship("ProductLinks", back_populates="history")
 
@@ -68,7 +67,7 @@ class Subscriptions(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     product_id = Column(Integer, ForeignKey('products.id'))
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, server_default=func.now())
     target_price = Column(Numeric(12, 2))
 
     user = relationship("Users", back_populates="subscriptions")

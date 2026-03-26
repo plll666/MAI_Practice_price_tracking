@@ -10,6 +10,7 @@
 * **SQLAlchemy** (ORM)
 * **Alembic** (Migrations)
 * **Pydantic** (Validation & Schema)
+* **Scrapy** (Parse)
 * **Docker & Docker Compose**
 
 ## Быстрый старт
@@ -42,14 +43,14 @@ cp .env.example .env
     python src/main.py
 ```
 
-Сервер будет доступен по адресу: http://localhost:8000
-
 #### Вариант Б: Запуск через Docker
 
 ```Bash
 
 docker-compose up --build
 ```
+---
+Сервер будет доступен по адресу: http://localhost:8000
 
 ## API и Документация
 
@@ -62,7 +63,7 @@ docker-compose up --build
 
     POST /auth/register — Регистрация нового пользователя.
     POST /auth/login — Аутентификация и получение JWT токена.
-
+    POST /products/new_link — Добавление новой ссылки.
 Структура проекта
 
     src/api/ — Роутеры и обработчики HTTP-запросов.
@@ -71,6 +72,8 @@ docker-compose up --build
     src/repositories/ — Слой доступа к данным (CRUD операции).
     src/schemas/ — Pydantic-схемы для валидации данных.
     migrations/ — Миграции базы данных (Alembic).
+    src/services/ — Бизнес-логика (координация работы парсеров и БД).
+    src/scraper/ — Реализация парсеров (Playwright, Scrapy).
 
 ## Работа с миграциями (Alembic)
 
