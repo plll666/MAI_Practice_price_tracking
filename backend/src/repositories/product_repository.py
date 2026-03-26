@@ -19,7 +19,7 @@ class ProductRepository:
         shop_id = result.scalar_one_or_none()
         return shop_id if shop_id else 1
 
-    async def get_or_create_product_by_url(self, url: str) -> Products:
+    async def get_or_create_product_by_url(self, url: str, title: str, price: int) -> Products:
         """Возвращает пролукт по url если такого url в базе нет создает новый продукт"""
         try:
             query = (
@@ -31,10 +31,10 @@ class ProductRepository:
             link = result.scalars().first()
             if link:
                 logger.info(f"Продукт найден в базе: {link.product.id}")
-                return link.product
+                return await self.update_product_details(link.product.id, url, title, price)
             shop_id = await self._get_shop_id_by_url(url)
             new_product = Products(
-                title="Pending parsing...",
+                title=title,
                 brand=None,
                 properties={},
                 image_url=None
@@ -45,14 +45,23 @@ class ProductRepository:
                 url=url,
                 product_id=new_product.id,
                 shop_id=shop_id,
-                is_available=True
+                is_available=True,
             )
             self.db.add(new_link)
+            await self.db.flush()
+            new_price = PriceHistory(
+                link_id=new_link.id,
+                price=price
+            )
+
+            self.db.add(new_price)
+            await self.db.flush()
             await self.db.commit()
             await self.db.refresh(new_product)
             return new_product
         except SQLAlchemyError as e:
             await self.db.rollback()
+            logger.error(f"Eror to create/update product: {e}")
             raise e
 
     async def update_product_details(self, product_id: int, url: str, title: str, price: float):

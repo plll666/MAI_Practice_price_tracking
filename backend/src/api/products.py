@@ -19,6 +19,10 @@ async def add_product(
 ):
     try:
         return await product_service.add_and_parse_product(product_data)
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        logger.error(f"Непредвиденная ошибка: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
