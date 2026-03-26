@@ -22,7 +22,7 @@ class ProductService:
                 logger.error(f"Ошибка парсинга {url}: {e}")
             return None
 
-    async def add_parse_product(self, product_data: ProductCreate):
+    async def add_and_parse_product(self, product_data: ProductCreate):
         url_str = str(product_data.url)
         product = await self.repo.get_or_create_product_by_url(url_str)
         if "citilink.ru" in url_str:
