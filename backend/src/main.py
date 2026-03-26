@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.auth import router as auth_router
+from src.api.products import router as product_router
 from src.core.logger import setup_logging, logger
 
 # 1. Настраиваем логирование при старте
@@ -25,6 +26,7 @@ app = FastAPI(
 
 # Подключаем роутеры
 app.include_router(auth_router)
+app.include_router(product_router)
 
 
 @app.get("/")
