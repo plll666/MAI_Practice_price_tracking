@@ -2,8 +2,8 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.models import Users
-from src.schemas.auth import UserCreate
+from src.database.models import Users, Contacts
+from src.schemas.auth import UserCreate, ContactCreate
 from src.core.security import get_password_hash
 from src.core.logger import logger
 
@@ -68,4 +68,49 @@ class UserRepository:
         except SQLAlchemyError as e:
             await self.db.rollback()
             logger.error(f"Ошибка БД в create_user: {e}")
+            raise e
+
+    async def upsert_contacts(self, user_id: int, contacts_data: ContactCreate) -> Optional[Contacts]:
+        """
+        Создает или обновляет контактные данные для указанного пользователя.
+
+        Этот метод реализует логику "update or insert":
+        1. Ищет существующую запись контактов по `user_id`.
+        2. Если запись не найдена, создает новую.
+        3. Если запись найдена, обновляет в ней только те поля, которые
+           были явно переданы в `contacts_data`.
+
+        Args:
+            user_id: ID пользователя, для которого обновляются контакты.
+            contacts_data: Pydantic-схема с данными для обновления.
+
+        Returns:
+            Объект модели SQLAlchemy `Contacts` с актуальными данными.
+
+        Raises:
+            SQLAlchemyError: При возникновении ошибки взаимодействия с базой данных.
+        """
+        try:
+            query = select(Contacts).where(Contacts.user_id == user_id)
+            result = await self.db.execute(query)
+            db_contacts = result.scalars().first()
+
+            if not db_contacts:
+                # Если контактов нет - создаем новый объект и привязываем к пользователю
+                db_contacts = Contacts(user_id=user_id)
+                self.db.add(db_contacts)
+
+            # Получаем словарь только с теми полями, что прислал пользователь
+            update_data = contacts_data.model_dump(exclude_unset=True)
+
+            # Динамически обновляем атрибуты модели
+            for key, value in update_data.items():
+                setattr(db_contacts, key, value)
+
+            await self.db.commit()
+            await self.db.refresh(db_contacts)
+            return db_contacts
+        except SQLAlchemyError as e:
+            await self.db.rollback()
+            logger.error(f"Database error in upsert_contacts: {e}")
             raise e

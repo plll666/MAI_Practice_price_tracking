@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger, Numeric, DateTime, Text, JSON, func
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, relationship, Mapped
 
 Base = declarative_base()
 
@@ -59,7 +59,7 @@ class Users(Base):
     is_active = Column(Boolean, default=True)
     
     subscriptions = relationship("Subscriptions", back_populates="user")
-    contacts = relationship("Contacts", uselist=False, back_populates="user")
+    contacts = relationship("Contacts", uselist=False, back_populates="user", lazy="joined")
 
 class Subscriptions(Base):
     __tablename__ = "subscriptions"
@@ -81,4 +81,5 @@ class Contacts(Base):
     phone_number = Column(String(20))
     tg = Column(String(34))
 
-    user = relationship("Users", back_populates="contacts")
+    user = relationship("Users", back_populates="contacts", lazy="joined")
+
