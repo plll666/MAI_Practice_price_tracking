@@ -28,12 +28,13 @@ export default function Register() {
 
     try {
       console.log('Attempting to register with login:', formData.login);
-      await register(formData);
+      await register(formData.login, formData.password);
+      
       console.log('Registration successful, navigating to /');
       navigate('/');
     } catch (err) {
       console.error('Registration failed:', err);
-      setLocalError(err.message || 'Ошибка регистрации. Проверьте подключение к серверу.');
+      setLocalError(err.message || 'Ошибка регистрации. Проверьте данные или попробуйте позже.');
     } finally {
       setLoading(false);
     }

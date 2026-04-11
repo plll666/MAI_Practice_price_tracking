@@ -10,8 +10,8 @@ export default function Login() {
     password: '',
   });
   const [loading, setLoading] = useState(false);
-  const [localError, setLocalError] = useState(null);
-  const { login, error: authError } = useAuth();
+  const [localError, setLocalError] = useState(null);  
+  const { login: authLogin, error: authError } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -28,7 +28,7 @@ export default function Login() {
 
     try {
       console.log('Attempting to login with:', formData.login);
-      await login(formData.login, formData.password);
+      await authLogin(formData.login, formData.password); 
       console.log('Login successful, navigating to /');
       navigate('/');
     } catch (err) {
@@ -46,7 +46,7 @@ export default function Login() {
       <div className={styles.card}>
         <div className={styles.header}>
           <h1 className={styles.title}>Вход</h1>
-          <p className={styles.subtitle}>Войдите в свою учетную запись</p>
+          <h2 className={styles.subtitle}>Войдите в свою учетную запись</h2>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>

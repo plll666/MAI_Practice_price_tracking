@@ -18,27 +18,39 @@ export default function Products() {
 
   const loadProducts = async () => {
     try {
-      const data = await getProducts();
-      setProducts(data);
+      setLoading(true);
+      const items = await getProducts();      
+      const normalizedItems = items.map(item => ({
+        ...item,
+        name: item.title || 'Без названия',
+        imageUrl: item.image_url || 'https://via.placeholder.com/200',
+        currentPrice: item.current_price || 0,
+        tags: item.tags || []
+      }));
+      
+      setProducts(normalizedItems);
     } catch (error) {
       console.error('Error loading products:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  const categories = ['all', ...new Set(products.map(p => p.category))];
-  const shops = ['all', ...new Set(products.map(p => p.shop))];
-
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.shop.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const query = searchQuery.toLowerCase();
+    
+    const matchesSearch = 
+      (product.name?.toLowerCase().includes(query)) ||
+      (product.shop?.toLowerCase().includes(query)) ||
+      (product.tags?.some(tag => tag.toLowerCase().includes(query)));
+
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     const matchesShop = selectedShop === 'all' || product.shop === selectedShop;
 
     return matchesSearch && matchesCategory && matchesShop;
   });
+
+  const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
+  const shops = ['all', ...new Set(products.map(p => p.shop).filter(Boolean))];
 
   const handleDelete = async (id, name) => {
     if (confirm(`Удалить товар "${name}" из отслеживания?`)) {
