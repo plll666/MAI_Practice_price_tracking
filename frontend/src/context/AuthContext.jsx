@@ -43,10 +43,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (login, password) => {
+  const login = async (loginName, password) => {
     setError(null);
     try {
-      await apiLogin(login, password);
+      await apiLogin(loginName, password); 
       const userData = await getCurrentUser();
       setUser(userData);
       navigate('/');
@@ -56,16 +56,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData) => {
+const register = async (loginName, password) => {
     setError(null);
     try {
-      await apiRegister(userData);
-      await login(userData.login, userData.password);
+      const data = await apiRegister(loginName, password);
+      
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user_login', loginName);
+      
+      setUser({ login: loginName }); 
+      navigate('/');
     } catch (err) {
       setError(err.message);
       throw err;
     }
-  };
+};
 
   const logout = () => {
     apiLogout();

@@ -1,4 +1,5 @@
 import os
+import json  # Добавляем импорт
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
@@ -12,7 +13,11 @@ port = os.getenv("DB_PORT", "5432")
 
 DATABASE_URL = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=True,
+    json_serializer=lambda obj: json.dumps(obj, ensure_ascii=False)
+)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
