@@ -18,7 +18,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Price Tracker API",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False
 )
 
 origins = [

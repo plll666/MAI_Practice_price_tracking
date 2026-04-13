@@ -16,9 +16,14 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const productsData = await getProducts();
+      const rawProductsData = await getProducts();
+      const productsData = rawProductsData.map(item => ({
+        ...item,
+        name: item.title || 'Без названия',
+        imageUrl: item.image_url || 'https://via.placeholder.com/200',
+        currentPrice: item.current_price || 0,
+      }));
       const alertsData = await getAlertEvents();
-
       const topDropsData = await getTopPriceChanges(30, 3, 'drops', productsData);
       const topIncreasesData = await getTopPriceChanges(30, 3, 'increases', productsData);
 

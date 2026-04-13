@@ -47,7 +47,6 @@ export default function ProductDetail() {
   const [ruleValue, setRuleValue] = useState('');
   const [ruleUnit, setRuleUnit] = useState('percent');
 
-  // Состояния для редактирования целевой цены
   const [isEditingTargetPrice, setIsEditingTargetPrice] = useState(false);
   const [targetPriceInput, setTargetPriceInput] = useState('');
   const [updatingTargetPrice, setUpdatingTargetPrice] = useState(false);
@@ -58,20 +57,27 @@ export default function ProductDetail() {
 
   const loadData = async () => {
     try {
+      setLoading(true);
       const productData = await getProduct(id);
-      const snapshotsData = await getPriceSnapshots(id);
+      const historyData = await getPriceSnapshots(id);
       const rulesData = await getAlertRules(id);
 
-      setProduct(productData);
-      setSnapshots(snapshotsData);
-      setRules(rulesData);
+      setProduct({
+        ...productData,
+        name: productData.title,
+        currentPrice: productData.current_price || 0,
+        imageUrl: productData.image_url || 'https://via.placeholder.com/200'
+      });
+      
+      setSnapshots(historyData || []);
+      setRules(rulesData || []);
 
-      // Устанавливаем текущую целевую цену для редактирования
-      if (productData?.targetPrice) {
-        setTargetPriceInput(productData.targetPrice.toString());
-      }
     } catch (error) {
       console.error('Error loading product data:', error);
+      if (error.message.includes('401')) {
+         navigate('/login');
+      }
+      setProduct(null);
     } finally {
       setLoading(false);
     }
@@ -96,7 +102,6 @@ export default function ProductDetail() {
     }
   };
 
-  // Обновление целевой цены
   const handleUpdateTargetPrice = async () => {
     if (!product) return;
 

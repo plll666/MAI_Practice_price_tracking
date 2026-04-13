@@ -8,7 +8,7 @@ class Shops(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
-    domain = Column(String(255))
+    domain = Column(String(255), unique=True)
     is_active = Column(Boolean, default=True)
 
     product_links = relationship("ProductLinks", back_populates="shop")
