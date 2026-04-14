@@ -58,8 +58,7 @@ def get_users_need_parsing(db: Session) -> list[int]:
 
     users_to_parse = []
     for user in users:
-        interval_hours = user.parse_interval or 1
-        interval_seconds = interval_hours * 3600
+        interval_seconds = user.parse_interval or 3600
         if not user.last_parse_at or (now - user.last_parse_at).total_seconds() >= interval_seconds:
             users_to_parse.append(user.id)
 

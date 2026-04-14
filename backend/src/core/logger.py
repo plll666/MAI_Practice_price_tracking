@@ -49,6 +49,7 @@ def setup_logging(
         "uvicorn.access",
         "uvicorn.error",
         "uvicorn.access",
+        "watchfiles",
         "celery",
         "celery.worker",
         "celery.app",

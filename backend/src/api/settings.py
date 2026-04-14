@@ -19,7 +19,7 @@ router = APIRouter(prefix="/settings", tags=["Settings"])
     "/parse-interval",
     response_model=SettingsResponse,
     summary="Обновить интервал парсинга пользователя",
-    description="Обновить интервал (в часах) для парсинга продуктов текущего пользователя."
+    description="Обновить интервал (в секундах) для парсинга продуктов текущего пользователя."
 )
 async def update_parse_interval(
     settings_data: SettingsUpdate,
@@ -31,7 +31,7 @@ async def update_parse_interval(
     await db.commit()
     await db.refresh(current_user)
     
-    logger.info(f"Интервал парсинга для пользователя {current_user.login} обновлен до {settings_data.parse_interval} часов")
+    logger.info(f"Интервал парсинга для пользователя {current_user.login} обновлен до {settings_data.parse_interval} секунд")
     
     return SettingsResponse(parse_interval=current_user.parse_interval)
 
@@ -47,4 +47,4 @@ async def get_parse_interval(
     current_user: Users = Depends(get_current_user)
 ) -> SettingsResponse:
     """Получить интервал парсинга для текущего пользователя."""
-    return SettingsResponse(parse_interval=current_user.parse_interval or 1)
+    return SettingsResponse(parse_interval=current_user.parse_interval or 3600)

@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class SettingsUpdate(BaseModel):
-    parse_interval: int = Field(..., ge=1, description="Интервал парсинга в часах")
+    parse_interval: int = Field(..., ge=120, description="Интервал парсинга в секундах (мин. 120)")
 
 
 class SettingsResponse(BaseModel):

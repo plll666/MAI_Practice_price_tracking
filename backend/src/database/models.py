@@ -57,7 +57,7 @@ class Users(Base):
     password_hash = Column(Text)
     chat_id = Column(String)
     is_active = Column(Boolean, default=True)
-    parse_interval = Column(Integer, default=1)
+    parse_interval = Column(Integer, default=3600)
     last_parse_at = Column(DateTime, nullable=True)
     
     subscriptions = relationship("Subscriptions", back_populates="user")
