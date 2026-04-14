@@ -57,6 +57,8 @@ class Users(Base):
     password_hash = Column(Text)
     chat_id = Column(String)
     is_active = Column(Boolean, default=True)
+    parse_interval = Column(Integer, default=1)
+    last_parse_at = Column(DateTime, nullable=True)
     
     subscriptions = relationship("Subscriptions", back_populates="user")
     contacts = relationship("Contacts", uselist=False, back_populates="user", lazy="joined")
@@ -82,4 +84,3 @@ class Contacts(Base):
     tg = Column(String(34))
 
     user = relationship("Users", back_populates="contacts", lazy="joined")
-
