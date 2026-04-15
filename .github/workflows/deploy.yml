@@ -23,6 +23,8 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push Frontend
         uses: docker/build-push-action@v7
@@ -30,6 +32,8 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     runs-on: ubuntu-latest
