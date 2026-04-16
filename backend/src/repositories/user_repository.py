@@ -114,3 +114,13 @@ class UserRepository:
             await self.db.rollback()
             logger.error(f"Database error in upsert_contacts: {e}")
             raise e
+
+    async def get_contacts(self, user_id: int) -> Optional[Contacts]:
+        """Получить контактные данные пользователя."""
+        try:
+            query = select(Contacts).where(Contacts.user_id == user_id)
+            result = await self.db.execute(query)
+            return result.scalars().first()
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка получения контактов: {e}")
+            return None

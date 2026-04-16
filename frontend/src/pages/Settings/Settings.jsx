@@ -1,9 +1,49 @@
-// Settings.jsx - полный исправленный файл
-import { useState, useEffect } from 'react';
-import { Download, Trash2, Bell, Database, Clock, Mail, Send, BellRing, Save } from 'lucide-react';
-import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules, saveUserSettings, getUserSettings, getParseInterval, setParseInterval } from '../../lib/storage';
+// Settings.jsx
+import { useState, useEffect, useCallback, memo } from 'react';
+import { Download, Trash2, Bell, Database, Clock, Mail, Phone, Send, BellRing, Save, CheckCircle, AlertCircle, Edit2, X } from 'lucide-react';
+import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules, saveUserSettings, getUserSettings, getParseInterval, setParseInterval, getUserContacts, updateUserContacts } from '../../lib/storage';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Settings.module.css';
+
+const InputField = memo(({ icon: Icon, label, name, type, placeholder, value, onChange, error }) => {
+  const handleChange = (e) => {
+    onChange(name, e.target.value);
+  };
+
+  return (
+    <div className={styles.inputField}>
+      <div className={styles.inputHeader}>
+        <div className={styles.inputIconWrapper}>
+          <Icon className={styles.inputIcon} />
+        </div>
+        <div className={styles.inputLabel}>{label}</div>
+      </div>
+      <div className={styles.inputWrapper}>
+        <input
+          type={type}
+          value={value || ''}
+          onChange={handleChange}
+          className={`${styles.input} ${error ? styles.inputError : value ? styles.inputValid : ''}`}
+          placeholder={placeholder}
+        />
+        {value && !error && (
+          <CheckCircle className={styles.inputValidationIcon} />
+        )}
+        {error && (
+          <AlertCircle className={styles.inputValidationIconError} />
+        )}
+      </div>
+      {error && (
+        <div className={styles.inputErrorText}>
+          <AlertCircle className={styles.errorIconSmall} />
+          {error}
+        </div>
+      )}
+    </div>
+  );
+});
+
+InputField.displayName = 'InputField';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -13,19 +53,86 @@ export default function Settings() {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
-    notificationInterval: '3600', // Изменено с '6' на '3600' (1 час по умолчанию)
+    notificationInterval: '3600',
     emailNotifications: false,
     browserNotifications: false,
     telegramNotifications: false,
-    email: '',
-    telegram: '',
   });
+
+  const [contacts, setContacts] = useState({
+    email: '',
+    phone: '',
+    telegram: ''
+  });
+  const [editContacts, setEditContacts] = useState({
+    email: '',
+    phone: '',
+    telegram: ''
+  });
+  const [contactsErrors, setContactsErrors] = useState({});
+  const [isEditingContacts, setIsEditingContacts] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  const validateEmail = useCallback((email) => {
+    if (!email) return true;
+    const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+    return emailRegex.test(email);
+  }, []);
+
+  const validatePhone = useCallback((phone) => {
+    if (!phone) return true;
+    const phoneRegex = /^(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$|^\+\d{1,3}\s?\d{10}$/;
+    return phoneRegex.test(phone);
+  }, []);
+
+  const validateTelegram = useCallback((telegram) => {
+    if (!telegram) return true;
+    const tgRegex = /^@?[a-zA-Z0-9_]{5,32}$/;
+    return tgRegex.test(telegram);
+  }, []);
+
+  const validateField = useCallback((field, value) => {
+    switch (field) {
+      case 'email':
+        return validateEmail(value) ? '' : 'Введите корректный email';
+      case 'phone':
+        return validatePhone(value) ? '' : 'Введите корректный номер телефона';
+      case 'telegram':
+        return validateTelegram(value) ? '' : 'Введите корректный Telegram username';
+      default:
+        return '';
+    }
+  }, [validateEmail, validatePhone, validateTelegram]);
+
+  const handleContactsFieldChange = useCallback((field, value) => {
+    setEditContacts(prev => ({ ...prev, [field]: value }));
+    const error = validateField(field, value);
+    setContactsErrors(prev => ({ ...prev, [field]: error }));
+  }, [validateField]);
+
+  const validateContactsForm = useCallback(() => {
+    const newErrors = {};
+    let isValid = true;
+
+    const fields = ['email', 'phone', 'telegram'];
+    for (const field of fields) {
+      const value = editContacts[field];
+      const error = validateField(field, value);
+      if (error) {
+        newErrors[field] = error;
+        isValid = false;
+      }
+    }
+
+    setContactsErrors(newErrors);
+    return isValid;
+  }, [editContacts, validateField]);
 
   useEffect(() => {
     loadData();
     loadSettings();
+    loadContacts();
   }, []);
 
   const loadData = async () => {
@@ -48,19 +155,36 @@ export default function Settings() {
 
   const loadSettings = async () => {
     try {
-      // Получаем интервал с сервера
       const parseInterval = await getParseInterval();
-
-      // Получаем остальные настройки из localStorage
       const savedSettings = await getUserSettings();
 
       setSettings(prev => ({
         ...prev,
         ...savedSettings,
-        notificationInterval: String(parseInterval), // Используем значение с сервера
+        notificationInterval: String(parseInterval),
       }));
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadContacts = async () => {
+    try {
+      const data = await getUserContacts();
+      if (data) {
+        setContacts({
+          email: data.email || '',
+          phone: data.phone_number || '',
+          telegram: data.tg || ''
+        });
+        setEditContacts({
+          email: data.email || '',
+          phone: data.phone_number || '',
+          telegram: data.tg || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading contacts:', error);
     }
   };
 
@@ -69,23 +193,16 @@ export default function Settings() {
     setSaveMessage('');
 
     try {
-      // Отправляем интервал на бэкенд
       const intervalSeconds = parseInt(settings.notificationInterval);
-      console.log('Saving parse interval:', intervalSeconds, 'seconds');
-
       await setParseInterval(intervalSeconds);
-
-      // Сохраняем остальные настройки в localStorage
       await saveUserSettings(settings);
 
       setSaveMessage('Настройки успешно сохранены!');
       setTimeout(() => setSaveMessage(''), 3000);
 
-      // Запрашиваем разрешение на браузерные уведомления
       if (settings.browserNotifications && 'Notification' in window) {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          console.log('Browser notifications enabled');
           new Notification('PriceTracker', {
             body: 'Уведомления успешно включены!',
             icon: '/logo192.png'
@@ -101,6 +218,40 @@ export default function Settings() {
     }
   };
 
+  const handleSaveContacts = async () => {
+    if (!validateContactsForm()) {
+      return;
+    }
+
+    setSaving(true);
+    setSaveMessage('');
+
+    try {
+      await updateUserContacts({
+        email: editContacts.email,
+        phone_number: editContacts.phone,
+        tg: editContacts.telegram
+      });
+
+      setContacts({ ...editContacts });
+      setIsEditingContacts(false);
+      setSaveMessage('Контакты успешно сохранены!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving contacts:', error);
+      setSaveMessage('Ошибка при сохранении контактов');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelContactsEdit = () => {
+    setEditContacts({ ...contacts });
+    setIsEditingContacts(false);
+    setContactsErrors({});
+  };
+
   const handleExport = () => {
     const data = {
       products,
@@ -108,6 +259,7 @@ export default function Settings() {
       events,
       rules,
       settings,
+      contacts,
       exportedAt: new Date().toISOString(),
     };
 
@@ -165,7 +317,6 @@ export default function Settings() {
           </div>
 
           <div className={styles.sectionContent}>
-            {/* Интервал проверки - ИСПРАВЛЕННЫЙ SELECT */}
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
                 <Clock className={styles.settingIcon} />
@@ -179,16 +330,15 @@ export default function Settings() {
                 onChange={(e) => setSettings({ ...settings, notificationInterval: e.target.value })}
                 className={styles.select}
               >
-                <option value="120">Раз в 2 минуты</option>      {/* 120 секунд */}
-                <option value="3600">Каждый час</option>         {/* 3600 секунд */}
-                <option value="7200">Раз в 2 часа</option>       {/* 7200 секунд */}
-                <option value="21600">Каждые 6 часов</option>    {/* 21600 секунд */}
-                <option value="43200">Каждые 12 часов</option>   {/* 43200 секунд */}
-                <option value="86400">Раз в день</option>        {/* 86400 секунд */}
+                <option value="120">Раз в 2 минуты</option>
+                <option value="3600">Каждый час</option>
+                <option value="7200">Раз в 2 часа</option>
+                <option value="21600">Каждые 6 часов</option>
+                <option value="43200">Каждые 12 часов</option>
+                <option value="86400">Раз в день</option>
               </select>
             </div>
 
-            {/* Email уведомления */}
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
                 <Mail className={styles.settingIcon} />
@@ -205,7 +355,6 @@ export default function Settings() {
               </button>
             </div>
 
-            {/* Telegram уведомления */}
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
                 <Send className={styles.settingIcon} />
@@ -222,7 +371,6 @@ export default function Settings() {
               </button>
             </div>
 
-            {/* Браузерные уведомления */}
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
                 <BellRing className={styles.settingIcon} />
@@ -252,43 +400,116 @@ export default function Settings() {
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Mail className={styles.sectionIcon} />
-            <h2 className={styles.sectionTitle}>Контактные данные для уведомлений</h2>
+            <h2 className={styles.sectionTitle}>Контактные данные</h2>
+            {!isEditingContacts && (
+              <button
+                onClick={() => setIsEditingContacts(true)}
+                className={styles.editContactsButton}
+              >
+                <Edit2 size={14} />
+                Изменить
+              </button>
+            )}
           </div>
 
           <div className={styles.sectionContent}>
-            <div className={styles.settingItem}>
-              <div className={styles.settingInfo}>
-                <Mail className={styles.settingIcon} />
-                <div>
-                  <div className={styles.settingLabel}>Email для уведомлений</div>
-                  <div className={styles.settingDescription}>Укажите email для получения уведомлений</div>
-                </div>
-              </div>
-              <input
-                type="email"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                className={styles.input}
-                placeholder="your@email.com"
-              />
-            </div>
+            {isEditingContacts ? (
+              <div className={styles.contactsEditGrid}>
+                <InputField
+                  icon={Mail}
+                  label="Email"
+                  name="email"
+                  type="email"
+                  placeholder="example@mail.com"
+                  value={editContacts.email}
+                  onChange={handleContactsFieldChange}
+                  error={contactsErrors.email}
+                />
 
-            <div className={styles.settingItem}>
-              <div className={styles.settingInfo}>
-                <Send className={styles.settingIcon} />
-                <div>
-                  <div className={styles.settingLabel}>Telegram username</div>
-                  <div className={styles.settingDescription}>@username для уведомлений в Telegram</div>
+                <InputField
+                  icon={Phone}
+                  label="Телефон"
+                  name="phone"
+                  type="tel"
+                  placeholder="+7 (999) 123-45-67"
+                  value={editContacts.phone}
+                  onChange={handleContactsFieldChange}
+                  error={contactsErrors.phone}
+                />
+
+                <InputField
+                  icon={Send}
+                  label="Telegram"
+                  name="telegram"
+                  type="text"
+                  placeholder="@username"
+                  value={editContacts.telegram}
+                  onChange={handleContactsFieldChange}
+                  error={contactsErrors.telegram}
+                />
+
+                <div className={styles.contactsActions}>
+                  <button
+                    onClick={handleSaveContacts}
+                    disabled={saving}
+                    className={styles.saveContactsButton}
+                  >
+                    <Save size={14} />
+                    {saving ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                  <button
+                    onClick={handleCancelContactsEdit}
+                    className={styles.cancelContactsButton}
+                  >
+                    <X size={14} />
+                    Отмена
+                  </button>
                 </div>
               </div>
-              <input
-                type="text"
-                value={settings.telegram}
-                onChange={(e) => setSettings({ ...settings, telegram: e.target.value })}
-                className={styles.input}
-                placeholder="@username"
-              />
-            </div>
+            ) : (
+              <div className={styles.contactsDisplay}>
+                <div className={styles.contactDisplayItem}>
+                  <Mail size={16} />
+                  <div className={styles.contactDisplayContent}>
+                    <span className={styles.contactDisplayLabel}>Email</span>
+                    <span className={styles.contactDisplayValue}>
+                      {contacts.email || <span className={styles.notSpecified}>Не указан</span>}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.contactDisplayItem}>
+                  <Phone size={16} />
+                  <div className={styles.contactDisplayContent}>
+                    <span className={styles.contactDisplayLabel}>Телефон</span>
+                    <span className={styles.contactDisplayValue}>
+                      {contacts.phone || <span className={styles.notSpecified}>Не указан</span>}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.contactDisplayItem}>
+                  <Send size={16} />
+                  <div className={styles.contactDisplayContent}>
+                    <span className={styles.contactDisplayLabel}>Telegram</span>
+                    <span className={styles.contactDisplayValue}>
+                      {contacts.telegram ? (
+                        <a
+                          href={`https://t.me/${contacts.telegram.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.telegramLink}
+                        >
+                          {contacts.telegram}
+                        </a>
+                      ) : (
+                        <span className={styles.notSpecified}>Не указан</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

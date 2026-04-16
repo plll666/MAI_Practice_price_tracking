@@ -211,7 +211,11 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className={styles.productPrice}>
-                      <div className={styles.productCurrentPrice}>{formatPrice(product.currentPrice, product.currency)}</div>
+                      {product.currentPrice > 0 ? (
+                        <div className={styles.productCurrentPrice}>{formatPrice(product.currentPrice, product.currency)}</div>
+                      ) : (
+                        <div className={styles.productCurrentPrice} style={{color: '#999'}}>Нет в наличии</div>
+                      )}
                     </div>
                   </Link>
                 );

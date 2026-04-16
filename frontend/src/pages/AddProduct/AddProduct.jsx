@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, X, Link as LinkIcon, Target } from 'lucide-react';
 import styles from './AddProduct.module.css';
-import { addProductByUrl } from '../../lib/storage';
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -17,7 +16,9 @@ export default function AddProduct() {
   setIsLoading(true);
 
   try {
-    const result = await addProductByUrl(url); 
+    const { addProductByUrl } = await import('../../lib/storage');
+    const targetPriceValue = targetPrice && targetPrice.trim() ? parseFloat(targetPrice) : null;
+    const result = await addProductByUrl(url, targetPriceValue); 
 
     setIsLoading(false);
     navigate(`/products/${result.id}`);

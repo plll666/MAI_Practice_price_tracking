@@ -1,18 +1,18 @@
-// ProductDetail.jsx
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ExternalLink,
   Trash2,
-  Plus,
-  X,
-  ToggleLeft,
-  ToggleRight,
   Target,
   Edit2,
   Save,
-  Bell
+  Bell,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Calendar,
+  DollarSign
 } from 'lucide-react';
 import {
   getProduct,
@@ -21,61 +21,135 @@ import {
   getAlertRules,
   saveAlertRule,
   deleteAlertRule,
-  saveProduct
+  saveProduct,
+  updateTargetPrice
 } from '../../lib/storage';
-import { calculatePriceStats, formatPrice, formatPriceChange } from '../../lib/analytics';
+import { formatPrice, formatPriceChange } from '../../lib/analytics';
 import {
-  LineChart,
-  Line,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
+  ReferenceLine,
+  ReferenceDot
 } from 'recharts';
 import styles from './ProductDetail.module.css';
+
+const PERIODS = [
+  { label: '7 дней', value: 7 },
+  { label: '30 дней', value: 30 },
+  { label: '90 дней', value: 90 },
+  { label: '180 дней', value: 180 },
+  { label: '360 дней', value: 360 }
+];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className={styles.customTooltip}>
+        <p className={styles.tooltipDate}>{label}</p>
+        <p className={styles.tooltipPrice}>
+          <DollarSign size={14} />
+          {data.price?.toLocaleString('ru-RU')} ₽
+        </p>
+        {data.change !== undefined && data.change !== null && (
+          <p className={`${styles.tooltipChange} ${data.change >= 0 ? styles.changeUp : styles.changeDown}`}>
+            {data.change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {data.change >= 0 ? '+' : ''}{data.change?.toLocaleString('ru-RU')} ₽
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  
   const [product, setProduct] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddRule, setShowAddRule] = useState(false);
-  const [ruleType, setRuleType] = useState('price_drop');
-  const [ruleValue, setRuleValue] = useState('');
-  const [ruleUnit, setRuleUnit] = useState('percent');
-
+  const [selectedPeriod, setSelectedPeriod] = useState(30);
+  const [priceStats, setPriceStats] = useState(null);
   const [isEditingTargetPrice, setIsEditingTargetPrice] = useState(false);
   const [targetPriceInput, setTargetPriceInput] = useState('');
   const [updatingTargetPrice, setUpdatingTargetPrice] = useState(false);
-
+  
   useEffect(() => {
+    if (!id || id === 'undefined') return;
     loadData();
-  }, [id]);
+  }, [id, selectedPeriod]);
 
   const loadData = async () => {
+    if (!id || id === 'undefined' || id === 'null') {
+      console.warn('loadData: пропуск, некорректный id:', id);
+      return;
+    }
+    
     try {
       setLoading(true);
-      const productData = await getProduct(id);
-      const historyData = await getPriceSnapshots(id);
-      const rulesData = await getAlertRules(id);
+      const [productData, historyData, rulesData] = await Promise.all([
+        getProduct(id),
+        getPriceSnapshots(id, selectedPeriod),
+        getAlertRules(id)
+      ]);
+
+      if (!productData) {
+        setProduct(null);
+        return;
+      }
 
       setProduct({
         ...productData,
         name: productData.title,
         currentPrice: productData.current_price || 0,
-        imageUrl: productData.image_url || 'https://via.placeholder.com/200'
+        imageUrl: productData.image_url || 'https://via.placeholder.com/200',
+        targetPrice: productData.target_price || null
       });
+      
+      if (productData.target_price) {
+        setTargetPriceInput(productData.target_price.toString());
+      } else {
+        setTargetPriceInput('');
+      }
       
       setSnapshots(historyData || []);
       setRules(rulesData || []);
 
+      if (historyData.length > 0) {
+        const prices = historyData.map(s => s.price);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+        const first = historyData[0].price;
+        const last = historyData[historyData.length - 1].price;
+        const change = last - first;
+        const changePercent = first > 0 ? (change / first) * 100 : 0;
+
+        setPriceStats({
+          min,
+          max,
+          avg,
+          change,
+          changePercent,
+          change7d: calculateChange(historyData, 7),
+          change30d: calculateChange(historyData, 30)
+        });
+      } else {
+        setPriceStats(null);
+      }
+
     } catch (error) {
       console.error('Error loading product data:', error);
-      if (error.message.includes('401')) {
-         navigate('/login');
+      if (error.message?.includes('401')) {
+        navigate('/login');
       }
       setProduct(null);
     } finally {
@@ -83,17 +157,53 @@ export default function ProductDetail() {
     }
   };
 
-  const stats = product ? calculatePriceStats(snapshots) : null;
+  const calculateChange = (data, days) => {
+    if (data.length < 2) return { change: 0, percent: 0 };
+    
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    
+    const oldData = data.filter(s => new Date(s.timestamp) <= cutoff);
+    const recentData = data.filter(s => new Date(s.timestamp) > cutoff);
+    
+    if (oldData.length === 0 || recentData.length === 0) return { change: 0, percent: 0 };
+    
+    const oldPrice = oldData[oldData.length - 1].price;
+    const newPrice = recentData[recentData.length - 1].price;
+    const change = newPrice - oldPrice;
+    const percent = oldPrice > 0 ? (change / oldPrice) * 100 : 0;
+    
+    return { change, percent };
+  };
 
-  const chartData = snapshots
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .map((s) => ({
-      date: new Date(s.timestamp).toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'short',
-      }),
-      price: s.price,
-    }));
+  const chartData = useMemo(() => {
+    if (!snapshots.length) return [];
+
+    return snapshots
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .map((s, i, arr) => {
+        const prevPrice = i > 0 ? arr[i - 1].price : s.price;
+        return {
+          date: new Date(s.timestamp).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'short'
+          }),
+          fullDate: new Date(s.timestamp).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }),
+          price: s.price,
+          change: i > 0 ? s.price - prevPrice : 0,
+          index: i
+        };
+      });
+  }, [snapshots]);
+
+  const minPrice = priceStats?.min;
+  const maxPrice = priceStats?.max;
+  const currentPrice = product?.currentPrice;
+  const priceDirection = priceStats?.change >= 0 ? 'up' : 'down';
 
   const handleDelete = async () => {
     if (confirm(`Удалить товар "${product.name}" из отслеживания?`)) {
@@ -107,44 +217,16 @@ export default function ProductDetail() {
 
     setUpdatingTargetPrice(true);
     try {
-      const newTargetPrice = parseFloat(targetPriceInput);
+      const targetPriceValue = targetPriceInput && targetPriceInput.trim() ? parseFloat(targetPriceInput) : null;
+      
+      await updateTargetPrice(id, targetPriceValue);
+      
       const updatedProduct = {
         ...product,
-        targetPrice: isNaN(newTargetPrice) ? null : newTargetPrice
+        targetPrice: isNaN(targetPriceValue) ? null : targetPriceValue
       };
-
-      await saveProduct(updatedProduct);
       setProduct(updatedProduct);
-
-      const existingTargetRule = rules.find(r => r.type === 'threshold');
-
-      if (newTargetPrice && !isNaN(newTargetPrice) && newTargetPrice > 0) {
-        if (existingTargetRule) {
-          const updatedRule = {
-            ...existingTargetRule,
-            value: newTargetPrice,
-            enabled: true
-          };
-          await saveAlertRule(updatedRule);
-        } else {
-          const newRule = {
-            id: `rule-${Date.now()}`,
-            productId: id,
-            type: 'threshold',
-            value: newTargetPrice,
-            unit: 'amount',
-            enabled: true,
-            createdAt: new Date().toISOString(),
-          };
-          await saveAlertRule(newRule);
-        }
-      } else if (existingTargetRule) {
-        await deleteAlertRule(existingTargetRule.id);
-      }
-
-      const updatedRules = await getAlertRules(id);
-      setRules(updatedRules);
-
+      
       setIsEditingTargetPrice(false);
     } catch (error) {
       console.error('Error updating target price:', error);
@@ -154,36 +236,13 @@ export default function ProductDetail() {
     }
   };
 
-  const handleAddRule = async () => {
-    if (!ruleValue) return;
-
-    const rule = {
-      productId: id,
-      type: ruleType,
-      value: parseFloat(ruleValue),
-      unit: ruleUnit,
-      enabled: true,
-    };
-    await saveAlertRule(rule);
-    setShowAddRule(false);
-    setRuleValue('');
-    loadData();
-  };
-
-  const handleToggleRule = async (rule) => {
-    await saveAlertRule({ ...rule, enabled: !rule.enabled });
-    loadData();
-  };
-
-  const handleDeleteRule = async (ruleId) => {
-    if (confirm('Удалить правило уведомления?')) {
-      await deleteAlertRule(ruleId);
-      loadData();
-    }
-  };
-
   if (loading) {
-    return <div className={styles.container}>Загрузка...</div>;
+    return <div className={styles.container}>
+      <div className={styles.loading}>
+        <div className={styles.spinner}></div>
+        <p>Загрузка данных...</p>
+      </div>
+    </div>;
   }
 
   if (!product) {
@@ -243,9 +302,24 @@ export default function ProductDetail() {
 
         <div className={styles.priceStats}>
           <h2 className={styles.sectionTitle}>Текущая цена</h2>
-          <div className={styles.currentPrice}>{formatPrice(product.currentPrice, product.currency)}</div>
+          
+          <div className={`${styles.currentPriceWrapper} ${priceDirection === 'down' ? styles.priceDown : priceDirection === 'up' ? styles.priceUp : ''}`}>
+            <div className={styles.currentPrice}>
+              {currentPrice > 0 ? (
+                formatPrice(currentPrice, product.currency)
+              ) : (
+                <span style={{color: '#999', fontSize: '1.5rem'}}>Нет в наличии</span>
+              )}
+            </div>
+            {priceStats && priceStats.change !== 0 && (
+              <div className={`${styles.priceChange} ${priceDirection === 'down' ? styles.changeDown : styles.changeUp}`}>
+                {priceDirection === 'down' ? <TrendingDown size={18} /> : <TrendingUp size={18} />}
+                <span>{priceStats.change >= 0 ? '+' : ''}{formatPrice(priceStats.change, product.currency)}</span>
+                <span className={styles.changePercent}>({priceStats.changePercent >= 0 ? '+' : ''}{priceStats.changePercent.toFixed(1)}%)</span>
+              </div>
+            )}
+          </div>
 
-          {/* Целевая цена */}
           <div className={styles.targetPriceSection}>
             <div className={styles.targetPriceHeader}>
               <Target className={styles.targetIcon} />
@@ -261,11 +335,7 @@ export default function ProductDetail() {
                     </span>
                     {targetPriceRule && (
                       <span className={`${styles.targetStatus} ${targetPriceRule.enabled ? styles.active : styles.inactive}`}>
-                        {targetPriceRule.enabled ? (
-                          <Bell className={styles.statusIcon} />
-                        ) : (
-                          <Bell className={styles.statusIcon} />
-                        )}
+                        <Bell className={styles.statusIcon} />
                         {targetPriceRule.enabled ? 'Уведомления активны' : 'Уведомления отключены'}
                       </span>
                     )}
@@ -320,71 +390,44 @@ export default function ProductDetail() {
                     }}
                     className={styles.cancelTargetButton}
                   >
-                    <X className={styles.iconSmall} />
                     Отмена
                   </button>
-                  {product.targetPrice && (
-                    <button
-                      onClick={async () => {
-                        if (confirm('Удалить целевую цену?')) {
-                          setUpdatingTargetPrice(true);
-                          try {
-                            const updatedProduct = { ...product, targetPrice: null };
-                            await saveProduct(updatedProduct);
-                            setProduct(updatedProduct);
-
-                            if (targetPriceRule) {
-                              await deleteAlertRule(targetPriceRule.id);
-                            }
-
-                            const updatedRules = await getAlertRules(id);
-                            setRules(updatedRules);
-                            setIsEditingTargetPrice(false);
-                            setTargetPriceInput('');
-                          } catch (error) {
-                            console.error('Error removing target price:', error);
-                            alert('Ошибка при удалении целевой цены');
-                          } finally {
-                            setUpdatingTargetPrice(false);
-                          }
-                        }
-                      }}
-                      className={styles.removeTargetButton}
-                    >
-                      <Trash2 className={styles.iconSmall} />
-                      Удалить
-                    </button>
-                  )}
                 </div>
               </div>
             )}
           </div>
 
-          {stats && (
-            <div className={styles.statsList}>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>За 7 дней</div>
-                <div className={stats.change7d < 0 ? styles.statValueDown : stats.change7d > 0 ? styles.statValueUp : styles.statValueNeutral}>
-                  {formatPriceChange(stats.change7d, stats.changePercent7d)}
+          {priceStats && (
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <div className={styles.statIcon}><TrendingDown size={16} /></div>
+                <div className={styles.statContent}>
+                  <div className={styles.statLabel}>Минимум</div>
+                  <div className={styles.statValue}>{formatPrice(priceStats.min, product.currency)}</div>
                 </div>
               </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>За 30 дней</div>
-                <div className={stats.change30d < 0 ? styles.statValueDown : stats.change30d > 0 ? styles.statValueUp : styles.statValueNeutral}>
-                  {formatPriceChange(stats.change30d, stats.changePercent30d)}
+              <div className={styles.statCard}>
+                <div className={styles.statIcon}><TrendingUp size={16} /></div>
+                <div className={styles.statContent}>
+                  <div className={styles.statLabel}>Максимум</div>
+                  <div className={styles.statValue}>{formatPrice(priceStats.max, product.currency)}</div>
                 </div>
               </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>Минимум</div>
-                <div className={styles.statValueNeutral}>{formatPrice(stats.min, product.currency)}</div>
+              <div className={styles.statCard}>
+                <div className={styles.statIcon}><DollarSign size={16} /></div>
+                <div className={styles.statContent}>
+                  <div className={styles.statLabel}>Средняя</div>
+                  <div className={styles.statValue}>{formatPrice(priceStats.avg, product.currency)}</div>
+                </div>
               </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>Максимум</div>
-                <div className={styles.statValueNeutral}>{formatPrice(stats.max, product.currency)}</div>
-              </div>
-              <div className={styles.statItem}>
-                <div className={styles.statLabel}>Средняя</div>
-                <div className={styles.statValueNeutral}>{formatPrice(stats.avg, product.currency)}</div>
+              <div className={styles.statCard}>
+                <div className={styles.statIcon}><Calendar size={16} /></div>
+                <div className={styles.statContent}>
+                  <div className={styles.statLabel}>За {selectedPeriod} дн.</div>
+                  <div className={`${styles.statValue} ${priceStats.change >= 0 ? styles.changeUp : styles.changeDown}`}>
+                    {priceStats.change >= 0 ? '+' : ''}{priceStats.changePercent.toFixed(1)}%
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -392,95 +435,110 @@ export default function ProductDetail() {
       </div>
 
       <div className={styles.chartCard}>
-        <h2 className={styles.sectionTitle}>История цен</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="date" stroke="var(--muted-foreground)" />
-            <YAxis stroke="var(--muted-foreground)" tickFormatter={(value) => `${value.toLocaleString()}₽`} />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'var(--card)', border: `1px solid var(--border)`, borderRadius: '8px' }}
-              formatter={(value) => [`${value.toLocaleString()} ₽`, 'Цена']}
-            />
-            <Line type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className={styles.rulesCard}>
-        <div className={styles.rulesHeader}>
-          <h2 className={styles.sectionTitle}>Правила уведомлений</h2>
-          <button onClick={() => setShowAddRule(!showAddRule)} className={styles.addRuleButton}>
-            <Plus className={styles.iconSmall} />
-            Добавить правило
-          </button>
+        <div className={styles.chartHeader}>
+          <h2 className={styles.sectionTitle}>История цен</h2>
+          <div className={styles.periodSelector}>
+            {PERIODS.map(period => (
+              <button
+                key={period.value}
+                onClick={() => setSelectedPeriod(period.value)}
+                className={`${styles.periodButton} ${selectedPeriod === period.value ? styles.periodActive : ''}`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
         </div>
-
-        {showAddRule && (
-          <div className={styles.addRuleForm}>
-            <div className={styles.formGrid}>
-              <select
-                value={ruleType}
-                onChange={(e) => setRuleType(e.target.value)}
-                className={styles.select}
-              >
-                <option value="price_drop">Снижение цены</option>
-                <option value="price_increase">Повышение цены</option>
-                <option value="threshold">Порог цены</option>
-              </select>
-              <input
-                type="number"
-                value={ruleValue}
-                onChange={(e) => setRuleValue(e.target.value)}
-                className={styles.input}
-                placeholder="Значение"
-              />
-              <select
-                value={ruleUnit}
-                onChange={(e) => setRuleUnit(e.target.value)}
-                className={styles.select}
-              >
-                <option value="percent">Процент</option>
-                <option value="amount">Сумма (₽)</option>
-              </select>
-            </div>
-            <div className={styles.formActions}>
-              <button onClick={handleAddRule} className={styles.saveButton}>Сохранить</button>
-              <button onClick={() => setShowAddRule(false)} className={styles.cancelButton}>Отмена</button>
-            </div>
+        
+        {chartData.length > 0 ? (
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height={400}>
+              <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <defs>
+                  <linearGradient id="priceGradientUp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05}/>
+                  </linearGradient>
+                  <linearGradient id="priceGradientDown" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.05}/>
+                  </linearGradient>
+                  <linearGradient id="priceGradientNeutral" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="var(--muted-foreground)"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)' }}
+                />
+                <YAxis 
+                  stroke="var(--muted-foreground)"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tickFormatter={(value) => `${value.toLocaleString()}₽`}
+                  domain={['dataMin - 100', 'dataMax + 100']}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                
+                {minPrice && (
+                  <ReferenceLine 
+                    y={minPrice} 
+                    stroke="#22c55e" 
+                    strokeDasharray="5 5" 
+                    strokeWidth={1}
+                    label={{
+                      value: 'Мин',
+                      position: 'right',
+                      fill: '#22c55e',
+                      fontSize: 11
+                    }}
+                  />
+                )}
+                {maxPrice && (
+                  <ReferenceLine 
+                    y={maxPrice} 
+                    stroke="#ef4444" 
+                    strokeDasharray="5 5" 
+                    strokeWidth={1}
+                    label={{
+                      value: 'Макс',
+                      position: 'right',
+                      fill: '#ef4444',
+                      fontSize: 11
+                    }}
+                  />
+                )}
+                
+                <Area
+                  type="monotone"
+                  dataKey="price"
+                  stroke={priceDirection === 'down' ? '#22c55e' : priceDirection === 'up' ? '#ef4444' : '#3b82f6'}
+                  strokeWidth={3}
+                  fill={priceDirection === 'down' ? 'url(#priceGradientUp)' : priceDirection === 'up' ? 'url(#priceGradientDown)' : 'url(#priceGradientNeutral)'}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
+                  dot={false}
+                  activeDot={{ 
+                    r: 6, 
+                    fill: priceDirection === 'down' ? '#22c55e' : priceDirection === 'up' ? '#ef4444' : '#3b82f6',
+                    stroke: '#fff',
+                    strokeWidth: 2
+                  }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className={styles.noDataMessage}>
+            <p>Нет данных о ценах за выбранный период</p>
           </div>
         )}
-
-        <div className={styles.rulesList}>
-          {rules.length === 0 ? (
-            <div className={styles.emptyRules}>Нет правил уведомлений</div>
-          ) : (
-            rules.map((rule) => (
-              <div key={rule.id} className={styles.ruleItem}>
-                <div className={styles.ruleInfo}>
-                  <div className={styles.ruleText}>
-                    {rule.type === 'price_drop' && 'Снижение цены на '}
-                    {rule.type === 'price_increase' && 'Повышение цены на '}
-                    {rule.type === 'threshold' && 'Цена достигнет '}
-                    {rule.value}
-                    {rule.unit === 'percent' ? '%' : ' ₽'}
-                  </div>
-                  <div className={styles.ruleStatus}>
-                    {rule.enabled ? 'Активно' : 'Отключено'}
-                  </div>
-                </div>
-                <div className={styles.ruleActions}>
-                  <button onClick={() => handleToggleRule(rule)} className={styles.toggleButton}>
-                    {rule.enabled ? <ToggleRight className={styles.iconMedium} /> : <ToggleLeft className={styles.iconMedium} />}
-                  </button>
-                  <button onClick={() => handleDeleteRule(rule.id)} className={styles.deleteRuleButton}>
-                    <X className={styles.iconSmall} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </div>
   );
