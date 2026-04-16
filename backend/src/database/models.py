@@ -84,3 +84,19 @@ class Contacts(Base):
     tg = Column(String(34))
 
     user = relationship("Users", back_populates="contacts", lazy="joined")
+
+
+class Alerts(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    product_id = Column(Integer, ForeignKey('products.id'))
+    message = Column(Text)
+    current_price = Column(Numeric(12, 2))
+    target_price = Column(Numeric(12, 2))
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("Users")
+    product = relationship("Products")

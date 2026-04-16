@@ -1,17 +1,14 @@
 import json
 import subprocess
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
-
 from src.celery.app import celery_app
 from src.core.logger import logger
-from src.database.database import SyncSessionLocal
-from src.database.models import ProductLinks, Subscriptions, Users, PriceHistory
+from src.repositories.celery_sync_repository import CelerySyncRepository
 
 
 def run_spider_sync(url: str) -> dict | None:
@@ -38,105 +35,129 @@ def run_spider_sync(url: str) -> dict | None:
         tmp_file.unlink(missing_ok=True)
 
 
-def get_user_product_links(db: Session, user_id: int) -> list[tuple[int, str]]:
-    """Получить связки (link_id, url) для продуктов пользователя."""
-    query = (
-        select(ProductLinks.id, ProductLinks.url)
-        .join(Subscriptions, Subscriptions.product_id == ProductLinks.product_id)
-        .where(Subscriptions.user_id == user_id)
-    )
-    result = db.execute(query)
-    return list(result.all())
-
-
-def get_users_need_parsing(db: Session) -> list[int]:
-    """Получить пользователей, которым нужен парсинг."""
-    now = datetime.utcnow()
-    query = select(Users).where(Users.is_active == True)
-    result = db.execute(query)
-    users = result.scalars().all()
-
-    users_to_parse = []
-    for user in users:
-        interval_seconds = user.parse_interval or 3600
-        if not user.last_parse_at or (now - user.last_parse_at).total_seconds() >= interval_seconds:
-            users_to_parse.append(user.id)
-
-    return users_to_parse
-
-
 @celery_app.task(bind=True, name="src.celery.tasks.parse_product")
 def parse_product_task(self, link_id: int) -> dict[str, Any]:
     """Парсить товар по link_id и сохранить цену в БД."""
-    logger.info(f"Starting parse task for link_id: {link_id}")
-    db = SyncSessionLocal()
-    try:
-        result = db.execute(
-            select(ProductLinks.url).where(ProductLinks.id == link_id)
-        )
-        url = result.scalar_one_or_none()
-        if not url:
-            return {"status": "error", "link_id": link_id, "error": "URL not found"}
+    logger.info(f"[parse_product] Начало парсинга товара link_id={link_id}")
+    
+    repo = CelerySyncRepository()
+    
+    links = repo.get_all_active_links()
+    link_dict = {lid: url for lid, url in links}
+    
+    url = link_dict.get(link_id)
+    if not url:
+        logger.warning(f"[parse_product] URL не найден для link_id={link_id}")
+        return {"status": "error", "link_id": link_id, "error": "URL not found"}
 
+    try:
+        logger.info(f"[parse_product] Парсинг URL: {url[:80]}...")
         scraped = run_spider_sync(url)
+        
         if not scraped:
+            logger.warning(f"[parse_product] Парсинг не удался для link_id={link_id}")
             return {"status": "error", "link_id": link_id, "error": "Parse failed"}
 
-        new_price = PriceHistory(link_id=link_id, price=scraped.get('price', 0))
-        db.add(new_price)
-        db.commit()
-
-        logger.info(f"Parsed {url}: price={scraped.get('price')}")
-        return {"status": "success", "link_id": link_id, "price": scraped.get('price')}
+        price = scraped.get('price', 0)
+        repo.add_price_record(link_id, price)
+        logger.info(f"[parse_product] Успешно! link_id={link_id}, цена={price}")
+        
+        return {"status": "success", "link_id": link_id, "price": price}
     except Exception as e:
-        db.rollback()
-        logger.error(f"Parse task exception: {link_id}, error: {str(e)}")
+        logger.error(f"[parse_product] Ошибка парсинга link_id={link_id}: {str(e)}")
         return {"status": "error", "link_id": link_id, "error": str(e)}
-    finally:
-        db.close()
 
 
 @celery_app.task(bind=True, name="src.celery.tasks.parse_user_products")
 def parse_user_products_task(self, user_id: int) -> dict[str, Any]:
     """Парсить все продукты пользователя."""
-    logger.info(f"Starting parse task for user {user_id}")
-    db = SyncSessionLocal()
+    logger.info(f"[parse_user_products] Начало парсинга для пользователя user_id={user_id}")
+    
+    repo = CelerySyncRepository()
+    
     try:
-        links = get_user_product_links(db, user_id)
-        logger.info(f"Found {len(links)} products to parse for user {user_id}")
+        links = repo.get_user_links(user_id)
+        logger.info(f"[parse_user_products] Найдено {len(links)} товаров для user_id={user_id}")
+        
+        if not links:
+            logger.info(f"[parse_user_products] Нет товаров для парсинга user_id={user_id}")
+            repo.update_last_parse_at(user_id)
+            return {"status": "completed", "user_id": user_id, "parsed_count": 0}
 
         for link_id, url in links:
             parse_product_task.delay(link_id)
-
-        db.execute(
-            update(Users).where(Users.id == user_id).values(last_parse_at=datetime.utcnow())
-        )
-        db.commit()
+        
+        repo.update_last_parse_at(user_id)
+        logger.info(f"[parse_user_products] Задачи созданы для {len(links)} товаров user_id={user_id}")
 
         return {"status": "completed", "user_id": user_id, "parsed_count": len(links)}
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error in parse_user_products_task: {str(e)}")
+        logger.error(f"[parse_user_products] Ошибка для user_id={user_id}: {str(e)}")
         return {"status": "error", "error": str(e)}
-    finally:
-        db.close()
 
 
 @celery_app.task(bind=True, name="src.celery.tasks.check_users_parse_schedule")
 def check_users_parse_schedule_task(self) -> dict[str, Any]:
     """Проверить расписание парсинга пользователей."""
-    logger.info("Checking users parse schedule")
-    db = SyncSessionLocal()
+    logger.info(f"[check_schedule] Проверка расписания пользователей")
+    
+    repo = CelerySyncRepository()
+    
     try:
-        user_ids = get_users_need_parsing(db)
-        logger.info(f"Users need parsing: {user_ids}")
-
+        parse_interval = int(os.getenv("PARSE_INTERVAL_SECONDS", "3600"))
+        user_ids = repo.get_users_need_parsing(parse_interval)
+        
+        if not user_ids:
+            logger.info(f"[check_schedule] Нет пользователей для парсинга")
+        else:
+            logger.info(f"[check_schedule] Запуск парсинга для {len(user_ids)} пользователей: {user_ids}")
+        
         for user_id in user_ids:
             parse_user_products_task.delay(user_id)
 
         return {"status": "completed", "users_count": len(user_ids)}
     except Exception as e:
-        logger.error(f"Error in check_users_parse_schedule_task: {str(e)}")
+        logger.error(f"[check_schedule] Ошибка: {str(e)}")
         return {"status": "error", "error": str(e)}
-    finally:
-        db.close()
+
+
+@celery_app.task(bind=True, name="src.celery.tasks.parse_all_products")
+def parse_all_products_task(self) -> dict[str, Any]:
+    """Парсить все товары из таблицы ProductLinks."""
+
+    logger.info("[parse_all] Celery Beat: Задача 'parse_all_products' запущена")
+    
+    repo = CelerySyncRepository()
+    
+    try:
+        links = repo.get_all_active_links()
+        logger.info(f"[parse_all] Найдено товаров для парсинга: {len(links)}")
+
+        if not links:
+            logger.info("[parse_all] Нет товаров для парсинга")
+
+            return {"status": "completed", "parsed": 0, "errors": 0}
+
+        parsed_count = 0
+        error_count = 0
+        
+        for i, (link_id, url) in enumerate(links, 1):
+            try:
+                scraped = run_spider_sync(url)
+                if scraped:
+                    repo.add_price_record(link_id, scraped.get('price', 0))
+                    parsed_count += 1
+                else:
+                    error_count += 1
+            except Exception as e:
+                logger.error(f"[parse_all] Ошибка парсинга link_id={link_id}: {str(e)}")
+                error_count += 1
+
+        logger.info(f"[parse_all] Результат: успешно={parsed_count}, ошибки={error_count}")
+
+        
+        return {"status": "completed", "parsed": parsed_count, "errors": error_count}
+    except Exception as e:
+        logger.error(f"[parse_all] Критическая ошибка: {str(e)}")
+
+        return {"status": "error", "error": str(e)}

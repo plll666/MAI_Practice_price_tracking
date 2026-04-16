@@ -68,7 +68,8 @@ class ProductService:
                 brand=scraped_item.get("brand") or "Unknown",
                 price=int(scraped_item.get("price", 0)),
                 image_url=image_url,
-                properties=props
+                properties=props,
+                target_price=product_data.target_price
             )
             return product
 
@@ -82,5 +83,7 @@ class ProductService:
                 os.remove(tmp_filename)
     async def get_all_products(self, user_id: int):
         return await self.repo.get_all_products(user_id=user_id)
-    async def get_product_by_id(self, product_id: int):
-        return await self.repo.get_product_by_id(product_id)
+    async def get_product_by_id(self, product_id: int, user_id: int = None):
+        return await self.repo.get_product_by_id(product_id, user_id=user_id)
+    async def update_target_price(self, user_id: int, product_id: int, target_price: float | None):
+        return await self.repo.update_target_price(user_id, product_id, target_price)
