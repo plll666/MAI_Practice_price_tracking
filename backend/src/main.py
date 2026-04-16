@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.auth import router as auth_router
 from src.api.products import router as product_router
 from src.api.user import router as user_router
+from src.api.settings import router as settings_router
+from src.api.analytics import router as analytics_router
+from src.api.alerts import router as alerts_router
 from src.core.logger import setup_logging, logger
 
 setup_logging()
@@ -33,10 +36,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем все роутеры
 app.include_router(auth_router)
 app.include_router(product_router)
 app.include_router(user_router)
+app.include_router(settings_router)
+app.include_router(analytics_router)
+app.include_router(alerts_router)
 
 
 @app.get("/")

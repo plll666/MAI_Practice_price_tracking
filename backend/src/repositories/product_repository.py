@@ -30,7 +30,7 @@ class ProductRepository:
         except Exception as e:
             logger.error(f"Ошибка при создании магазина для {domain}: {e}")
             return 1
-    async def get_or_create_product_by_url(self, user_id: int, url: str, title: str, brand: str, price: int, image_url: str, properties: dict = None) -> Products:
+    async def get_or_create_product_by_url(self, user_id: int, url: str, title: str, brand: str, price: int, image_url: str, properties: dict = None, target_price: float = None) -> Products:
         """Возвращает продукт по url если такого url в базе нет создает новый продукт"""
         try:
             query = (
@@ -76,12 +76,20 @@ class ProductRepository:
                 Subscriptions.product_id == product.id
             )
             sub_result = await self.db.execute(sub_query)
-            if not sub_result.scalar_one_or_none():
+            existing_sub = sub_result.scalar_one_or_none()
+            if not existing_sub:
+                final_target_price = target_price
+                if target_price is None:
+                    final_target_price = round(price * 0.8, 2)
+                    logger.info(f"Автоматическая желаемая цена: {final_target_price} (80% от {price})")
                 new_sub = Subscriptions(
                     user_id=user_id,
-                    product_id=product.id
+                    product_id=product.id,
+                    target_price=final_target_price
                 )
                 self.db.add(new_sub)
+            elif target_price is not None:
+                existing_sub.target_price = target_price
             await self.db.commit()
             await self.db.refresh(product)
             return product
@@ -147,14 +155,30 @@ class ProductRepository:
                 price_res = await self.db.execute(price_query)
                 last_price = price_res.scalar_one_or_none()
                 product.current_price = float(last_price) if last_price else 0.0
+                
+                url_query = (
+                    select(ProductLinks.url)
+                    .where(ProductLinks.product_id == product.id)
+                    .limit(1)
+                )
+                url_res = await self.db.execute(url_query)
+                product.url = url_res.scalar_one_or_none()
             return list(products)
         except SQLAlchemyError as e:
             logger.error(f"Ошибка при получении списка продуктов юзера {user_id}: {e}")
             return []
 
-    async def get_product_by_id(self, product_id: int) -> Optional[Products]:
+    async def get_product_by_id(self, product_id: int, user_id: int = None) -> Optional[Products]:
         try:
-            query = select(Products).where(Products.id == product_id)
+            query = (
+                select(Products)
+                .join(Subscriptions)
+                .where(Products.id == product_id)
+            )
+            
+            if user_id:
+                query = query.where(Subscriptions.user_id == user_id)
+            
             result = await self.db.execute(query)
             product = result.scalar_one_or_none()
             
@@ -168,8 +192,47 @@ class ProductRepository:
                 )
                 price_result = await self.db.execute(price_query)
                 current_price = price_result.scalar_one_or_none()
-                product.current_price = float(current_price) if current_price else 0.0  
+                product.current_price = float(current_price) if current_price else 0.0
+                
+                target_query = (
+                    select(Subscriptions.target_price)
+                    .where(
+                        Subscriptions.user_id == user_id,
+                        Subscriptions.product_id == product_id
+                    )
+                )
+                target_result = await self.db.execute(target_query)
+                target_price = target_result.scalar_one_or_none()
+                product.target_price = float(target_price) if target_price else None
+                
+                url_query = (
+                    select(ProductLinks.url)
+                    .where(ProductLinks.product_id == product_id)
+                    .limit(1)
+                )
+                url_result = await self.db.execute(url_query)
+                product.url = url_result.scalar_one_or_none()
             return product
         except SQLAlchemyError as e:
             logger.error(f"Ошибка при получении продукта {product_id}: {e}")
             return None
+
+    async def update_target_price(self, user_id: int, product_id: int, target_price: Optional[float]) -> bool:
+        """Обновить желаемую цену в подписке пользователя."""
+        try:
+            query = (
+                update(Subscriptions)
+                .where(
+                    Subscriptions.user_id == user_id,
+                    Subscriptions.product_id == product_id
+                )
+                .values(target_price=target_price)
+            )
+            await self.db.execute(query)
+            await self.db.commit()
+            logger.info(f"Обновлен target_price для product_id={product_id}, user_id={user_id}: {target_price}")
+            return True
+        except SQLAlchemyError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка обновления target_price: {e}")
+            return False

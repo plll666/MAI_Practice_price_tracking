@@ -120,6 +120,43 @@ export const saveUserSettings = async (s) => {
   localStorage.setItem('user_settings', JSON.stringify(s));
 };
 
+// src/lib/storage.js
+
+// ... остальной код ...
+
+export const getParseInterval = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/settings/parse-interval`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) return 3600; // 3600 секунд = 1 час (дефолт)
+    const data = await response.json();
+    return data.parse_interval || 3600;
+  } catch (error) {
+    console.error('Failed to get parse interval:', error);
+    return 3600; // Дефолт 1 час
+  }
+};
+
+export const setParseInterval = async (interval) => {
+  try {
+    const response = await fetch(`${API_BASE}/settings/parse-interval`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ parse_interval: interval })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to set parse interval');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to set parse interval:', error);
+    throw error;
+  }
+};
+
 export const initializeDemoData = async () => {
   console.log('Backend mode: skipping demo data initialization');
 };

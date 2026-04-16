@@ -57,6 +57,8 @@ class Users(Base):
     password_hash = Column(Text)
     chat_id = Column(String)
     is_active = Column(Boolean, default=True)
+    parse_interval = Column(Integer, default=3600)
+    last_parse_at = Column(DateTime, nullable=True)
     
     subscriptions = relationship("Subscriptions", back_populates="user")
     contacts = relationship("Contacts", uselist=False, back_populates="user", lazy="joined")
@@ -83,3 +85,18 @@ class Contacts(Base):
 
     user = relationship("Users", back_populates="contacts", lazy="joined")
 
+
+class Alerts(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    product_id = Column(Integer, ForeignKey('products.id'))
+    message = Column(Text)
+    current_price = Column(Numeric(12, 2))
+    target_price = Column(Numeric(12, 2))
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("Users")
+    product = relationship("Products")

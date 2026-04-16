@@ -52,7 +52,7 @@
 
 # volumes:
 #   postgres_data:
-# // для для локалки
+# // для локалки
 services:
   db:
     image: postgres:15
@@ -73,16 +73,34 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
 
+  redis:
+    image: redis:7-alpine
+    container_name: price_tracker_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
   app:
     build: ./backend
     container_name: price_app_service
+    ports:
+      - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env
     environment:
       DB_HOST: db
+      CELERY_BROKER: redis://redis:6379/0
+      CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
     working_dir: /app/src
@@ -90,7 +108,47 @@ services:
     ipc: host
     command: >
       sh -c "alembic upgrade head && python main.py"
-  
+
+  celery_worker:
+    build: ./backend
+    container_name: price_tracker_celery_worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      CELERY_BROKER: redis://redis:6379/0
+      CELERY_BACKEND: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    working_dir: /app/src
+    command: celery -A src.celery.app worker -l info -Q parsing,maintenance,notifications
+    restart: always
+
+  celery_beat:
+    build: ./backend
+    container_name: price_tracker_celery_beat
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      CELERY_BROKER: redis://redis:6379/0
+      CELERY_BACKEND: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    working_dir: /app/src
+    command: celery -A src.celery.app beat -l info
+    restart: always
+
   frontend:
     container_name: price_tracker_frontend
     build:

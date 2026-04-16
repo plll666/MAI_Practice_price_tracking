@@ -1,7 +1,7 @@
-// Settings.jsx
+// Settings.jsx - полный исправленный файл
 import { useState, useEffect } from 'react';
 import { Download, Trash2, Bell, Database, Clock, Mail, Send, BellRing, Save } from 'lucide-react';
-import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules, saveUserSettings, getUserSettings } from '../../lib/storage';
+import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules, saveUserSettings, getUserSettings, getParseInterval, setParseInterval } from '../../lib/storage';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Settings.module.css';
 
@@ -13,7 +13,7 @@ export default function Settings() {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
-    notificationInterval: '6',
+    notificationInterval: '3600', // Изменено с '6' на '3600' (1 час по умолчанию)
     emailNotifications: false,
     browserNotifications: false,
     telegramNotifications: false,
@@ -48,13 +48,17 @@ export default function Settings() {
 
   const loadSettings = async () => {
     try {
+      // Получаем интервал с сервера
+      const parseInterval = await getParseInterval();
+
+      // Получаем остальные настройки из localStorage
       const savedSettings = await getUserSettings();
-      if (savedSettings) {
-        setSettings(prev => ({
-          ...prev,
-          ...savedSettings,
-        }));
-      }
+
+      setSettings(prev => ({
+        ...prev,
+        ...savedSettings,
+        notificationInterval: String(parseInterval), // Используем значение с сервера
+      }));
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -65,7 +69,15 @@ export default function Settings() {
     setSaveMessage('');
 
     try {
+      // Отправляем интервал на бэкенд
+      const intervalSeconds = parseInt(settings.notificationInterval);
+      console.log('Saving parse interval:', intervalSeconds, 'seconds');
+
+      await setParseInterval(intervalSeconds);
+
+      // Сохраняем остальные настройки в localStorage
       await saveUserSettings(settings);
+
       setSaveMessage('Настройки успешно сохранены!');
       setTimeout(() => setSaveMessage(''), 3000);
 
@@ -74,11 +86,15 @@ export default function Settings() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           console.log('Browser notifications enabled');
+          new Notification('PriceTracker', {
+            body: 'Уведомления успешно включены!',
+            icon: '/logo192.png'
+          });
         }
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      setSaveMessage('Ошибка при сохранении настроек');
+      setSaveMessage('Ошибка при сохранении настроек: ' + error.message);
       setTimeout(() => setSaveMessage(''), 3000);
     } finally {
       setSaving(false);
@@ -149,7 +165,7 @@ export default function Settings() {
           </div>
 
           <div className={styles.sectionContent}>
-            {/* Интервал проверки */}
+            {/* Интервал проверки - ИСПРАВЛЕННЫЙ SELECT */}
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
                 <Clock className={styles.settingIcon} />
@@ -163,10 +179,12 @@ export default function Settings() {
                 onChange={(e) => setSettings({ ...settings, notificationInterval: e.target.value })}
                 className={styles.select}
               >
-                <option value="1">Каждый час</option>
-                <option value="6">Каждые 6 часов</option>
-                <option value="12">Каждые 12 часов</option>
-                <option value="24">Раз в день</option>
+                <option value="120">Раз в 2 минуты</option>      {/* 120 секунд */}
+                <option value="3600">Каждый час</option>         {/* 3600 секунд */}
+                <option value="7200">Раз в 2 часа</option>       {/* 7200 секунд */}
+                <option value="21600">Каждые 6 часов</option>    {/* 21600 секунд */}
+                <option value="43200">Каждые 12 часов</option>   {/* 43200 секунд */}
+                <option value="86400">Раз в день</option>        {/* 86400 секунд */}
               </select>
             </div>
 
