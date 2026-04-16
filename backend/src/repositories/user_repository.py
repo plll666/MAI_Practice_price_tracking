@@ -13,7 +13,7 @@ class UserRepository:
     Репозиторий для выполнения операций с пользователями в базе данных.
     """
 
-    def __init__(self, db: AsyncSession):
+    def init(self, db: AsyncSession):
         self.db = db
 
     async def get_user_by_login(self, login: str) -> Optional[Users]:
@@ -75,17 +75,17 @@ class UserRepository:
         Создает или обновляет контактные данные для указанного пользователя.
 
         Этот метод реализует логику "update or insert":
-        1. Ищет существующую запись контактов по `user_id`.
+        1. Ищет существующую запись контактов по user_id.
         2. Если запись не найдена, создает новую.
         3. Если запись найдена, обновляет в ней только те поля, которые
-           были явно переданы в `contacts_data`.
+           были явно переданы в contacts_data.
 
         Args:
             user_id: ID пользователя, для которого обновляются контакты.
             contacts_data: Pydantic-схема с данными для обновления.
 
         Returns:
-            Объект модели SQLAlchemy `Contacts` с актуальными данными.
+            Объект модели SQLAlchemy Contacts с актуальными данными.
 
         Raises:
             SQLAlchemyError: При возникновении ошибки взаимодействия с базой данных.
@@ -114,3 +114,13 @@ class UserRepository:
             await self.db.rollback()
             logger.error(f"Database error in upsert_contacts: {e}")
             raise e
+
+    async def get_contacts(self, user_id: int) -> Optional[Contacts]:
+        """Получить контактные данные пользователя."""
+        try:
+            query = select(Contacts).where(Contacts.user_id == user_id)
+            result = await self.db.execute(query)
+            return result.scalars().first()
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка получения контактов: {e}")
+            return None
