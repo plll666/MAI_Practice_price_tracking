@@ -1,9 +1,10 @@
 // src/components/Header.jsx
-import { Bell, User, Moon, Sun, LogOut } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Bell, User, Moon, Sun, LogOut, TrendingDown, Target } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getAlertEvents, markAllAlertsAsRead } from '../lib/storage';
+import { getAlertEvents, markAllAlertsAsRead, markAlertAsRead } from '../lib/storage';
+import { showBrowserNotification, requestNotificationPermission, getNotificationPermission } from '../lib/notifications';
 import styles from './Header.module.css';
 
 export function Header() {
@@ -13,9 +14,12 @@ export function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const lastAlertCount = useRef(0);
 
   useEffect(() => {
     loadAlerts();
+    requestNotificationPermission();
+    
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
       setIsDark(true);
@@ -27,8 +31,25 @@ export function Header() {
     try {
       const alertsData = await getAlertEvents();
       const alertsArray = Array.isArray(alertsData) ? alertsData : [];
-      setAlerts(alertsArray.slice(0, 5).reverse());
-      setUnreadCount(alertsArray.filter(a => !a.read).length);
+      
+      const newUnreadCount = alertsArray.filter(a => !a.read).length;
+      const previousUnread = lastAlertCount.current;
+      lastAlertCount.current = newUnreadCount;
+      
+      if (newUnreadCount > previousUnread && previousUnread > 0) {
+        const newAlerts = alertsArray.filter(a => !a.read).slice(0, newUnreadCount - previousUnread);
+        for (const alert of newAlerts) {
+          if (alert.currentPrice) {
+            showBrowserNotification('Цена снижена! 🎉', {
+              body: alert.message,
+              tag: `price-alert-${alert.id}`
+            });
+          }
+        }
+      }
+      
+      setAlerts(alertsArray.slice(0, 10).reverse());
+      setUnreadCount(newUnreadCount);
     } catch (error) {
       console.error('Error loading alerts:', error);
       setAlerts([]);
@@ -49,8 +70,18 @@ export function Header() {
 
   const handleMarkAllRead = async () => {
     await markAllAlertsAsRead();
-    setShowNotifications(false);
     loadAlerts();
+  };
+
+  const handleAlertClick = async (alert) => {
+    if (!alert.read) {
+      await markAlertAsRead(alert.id);
+      loadAlerts();
+    }
+    if (alert.productId) {
+      navigate(`/products/${alert.productId}`);
+      setShowNotifications(false);
+    }
   };
 
   const handleLogout = () => {
@@ -104,8 +135,27 @@ export function Header() {
                     <div
                       key={alert.id}
                       className={`${styles.notificationItem} ${!alert.read ? styles.unread : ''}`}
+                      onClick={() => handleAlertClick(alert)}
+                      style={{ cursor: alert.productId ? 'pointer' : 'default' }}
                     >
-                      <p className={styles.notificationMessage}>{alert.message}</p>
+                      <div className={styles.notificationContent}>
+                        <div className={styles.notificationIcon}>
+                          <TrendingDown size={20} />
+                        </div>
+                        <div className={styles.notificationText}>
+                          <p className={styles.notificationMessage}>{alert.message}</p>
+                          <div className={styles.notificationMeta}>
+                            <span className={styles.currentPrice}>
+                              <Target size={12} /> {alert.currentPrice?.toLocaleString('ru-RU')} ₽
+                            </span>
+                            {alert.targetPrice && (
+                              <span className={styles.targetPrice}>
+                                целевая: {alert.targetPrice.toLocaleString('ru-RU')} ₽
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                       <p className={styles.notificationTime}>
                         {new Date(alert.timestamp).toLocaleString('ru-RU')}
                       </p>

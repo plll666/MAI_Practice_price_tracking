@@ -11,7 +11,6 @@ export default defineConfig({
         target: 'http://app:8000', 
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''), 
       },
     }
   }

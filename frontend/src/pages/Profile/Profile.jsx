@@ -1,10 +1,9 @@
 // Profile.jsx
 import { useState, useEffect, useCallback, memo } from 'react';
 import { User, Mail, Phone, Send, Calendar, Package, Bell, TrendingDown, Award, Edit2, Save, X, CheckCircle, AlertCircle } from 'lucide-react';
-import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules } from '../../lib/storage';
+import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules, getUserContacts, updateUserContacts } from '../../lib/storage';
 import { getTopPriceChanges } from '../../lib/analytics';
 import { useAuth } from '../../context/AuthContext';
-import { updateCurrentUser } from '../../lib/api';
 import styles from './Profile.module.css';
 
 // Меморизированный компонент поля ввода
@@ -167,6 +166,27 @@ export default function Profile() {
   }, [user]);
 
   useEffect(() => {
+    const loadContacts = async () => {
+      const contacts = await getUserContacts();
+      if (contacts) {
+        setProfileData(prev => ({
+          ...prev,
+          email: contacts.email || '',
+          phone: contacts.phone_number || '',
+          telegram: contacts.tg || ''
+        }));
+        setEditData(prev => ({
+          ...prev,
+          email: contacts.email || '',
+          phone: contacts.phone_number || '',
+          telegram: contacts.tg || ''
+        }));
+      }
+    };
+    loadContacts();
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -205,18 +225,17 @@ export default function Profile() {
 
     setUpdating(true);
     try {
-      await updateCurrentUser({
-        full_name: editData.name,
+      await updateUserContacts({
         email: editData.email,
-        phone: editData.phone,
-        telegram: editData.telegram,
+        phone_number: editData.phone,
+        tg: editData.telegram
       });
       setProfileData(prev => ({
         ...prev,
         name: editData.name,
         email: editData.email,
         phone: editData.phone,
-        telegram: editData.telegram,
+        telegram: editData.telegram
       }));
       setIsEditing(false);
       setErrors({});

@@ -1,30 +1,44 @@
     import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Search, Plus, Trash2, ExternalLink, Filter, Package } from 'lucide-react';
-import { getProducts, deleteProduct } from '../../lib/storage';
-import { calculatePriceStats, formatPrice } from '../../lib/analytics';
+import { getProducts, deleteProduct, getProductPrices } from '../../lib/storage';
+import { formatPrice } from '../../lib/analytics';
 import styles from './Products.module.css';
 
 export default function Products() {
   const [products, setProducts] = useState([]);
+  const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedShop, setSelectedShop] = useState('all');
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
-  const loadProducts = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const items = await getProducts();      
+      const [items, priceData] = await Promise.all([
+        getProducts(),
+        getProductPrices()
+      ]);
+      
+      const priceMap = {};
+      priceData.forEach(p => {
+        priceMap[p.id] = p;
+      });
+      setPrices(priceMap);
+      
       const normalizedItems = items.map(item => ({
         ...item,
         name: item.title || 'Без названия',
         imageUrl: item.image_url || 'https://via.placeholder.com/200',
-        currentPrice: item.current_price || 0,
+        currentPrice: priceMap[item.id]?.current_price || item.current_price || 0,
+        previousPrice: priceMap[item.id]?.previous_price,
+        shop: priceMap[item.id]?.shop || item.shop || 'Unknown',
+        lastParsedAt: priceMap[item.id]?.last_parsed_at,
         tags: item.tags || []
       }));
       
@@ -55,7 +69,7 @@ export default function Products() {
   const handleDelete = async (id, name) => {
     if (confirm(`Удалить товар "${name}" из отслеживания?`)) {
       await deleteProduct(id);
-      loadProducts();
+      loadData();
     }
   };
 
@@ -152,8 +166,12 @@ export default function Products() {
       ) : (
         <div className={styles.productsGrid}>
           {filteredProducts.map((product) => {
-            const stats = calculatePriceStats(product.id);
-            const change = stats ? stats.changePercent7d : 0;
+            const currentPrice = product.currentPrice;
+            const previousPrice = product.previousPrice;
+            let change = 0;
+            if (currentPrice && previousPrice && previousPrice > 0) {
+              change = ((currentPrice - previousPrice) / previousPrice) * 100;
+            }
             return (
               <div key={product.id} className={styles.productCard}>
                 <Link to={`/products/${product.id}`}>
@@ -181,9 +199,13 @@ export default function Products() {
                   <div className={styles.productFooter}>
                     <div>
                       <div className={styles.productPrice}>
-                        {formatPrice(product.currentPrice, product.currency)}
+                        {product.currentPrice > 0 ? (
+                          formatPrice(product.currentPrice, product.currency)
+                        ) : (
+                          <span style={{color: '#999', fontSize: '0.9rem'}}>Нет в наличии</span>
+                        )}
                       </div>
-                      {change !== 0 && (
+                      {change !== 0 && product.currentPrice > 0 && (
                         <div className={change < 0 ? styles.priceChangeDown : styles.priceChangeUp}>
                           {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}% за 7 дней
                         </div>
@@ -194,7 +216,7 @@ export default function Products() {
                         Подробнее
                       </Link>
                       <a
-                        href={product.url}
+                        href={product.url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.actionIcon}
