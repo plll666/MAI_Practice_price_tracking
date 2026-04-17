@@ -5,9 +5,6 @@ import os
 from celery import Celery
 
 from src.core.logger import setup_logging, logger
-import src.celery.tasks.alerts  # noqa
-import src.celery.tasks.maintenance # noqa
-import src.celery.tasks.parsing # noqa
 
 setup_logging()
 
@@ -20,6 +17,10 @@ celery_app = Celery(
     broker=broker_url,
     backend=backend_url
 )
+
+import src.celery.tasks.alerts  # noqa
+import src.celery.tasks.maintenance # noqa
+import src.celery.tasks.parsing # noqa
 
 celery_app.conf.update(
     task_serializer="json",
@@ -36,6 +37,7 @@ celery_app.conf.update(
         "src.celery.tasks.parse_all_products": {"queue": "parsing"},
         "src.celery.tasks.cleanup_old_prices": {"queue": "maintenance"},
         "src.celery.tasks.check_price_alerts": {"queue": "notifications"},
+        "src.celery.tasks.check_price_appeared": {"queue": "notifications"},
     },
     beat_schedule={
         "parse-all-products": {
@@ -51,6 +53,11 @@ celery_app.conf.update(
         "check-price-alerts": {
             "task": "src.celery.tasks.check_price_alerts",
             "schedule": 300.0,
+            "args": (),
+        },
+        "check-price-appeared": {
+            "task": "src.celery.tasks.check_price_appeared",
+            "schedule": 600.0,
             "args": (),
         },
     },
