@@ -20,12 +20,33 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Backend
+      - name: Build and push Backend App
         uses: docker/build-push-action@v7
         with:
           context: ./backend
+          file: ./backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-backend:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Celery Worker
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.worker
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-celery-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Celery Beat
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.beat
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-celery-beat:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

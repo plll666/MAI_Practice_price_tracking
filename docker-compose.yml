@@ -110,7 +110,9 @@ services:
       sh -c "alembic upgrade head && python main.py"
 
   celery_worker:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
     container_name: price_tracker_celery_worker
     depends_on:
       db:
@@ -128,9 +130,17 @@ services:
     working_dir: /app/src
     command: celery -A src.celery.app worker -l info -Q parsing,maintenance,notifications
     restart: always
+    healthcheck:
+      test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   celery_beat:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.beat
     container_name: price_tracker_celery_beat
     depends_on:
       db:
@@ -148,6 +158,12 @@ services:
     working_dir: /app/src
     command: celery -A src.celery.app beat -l info
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   frontend:
     container_name: price_tracker_frontend
