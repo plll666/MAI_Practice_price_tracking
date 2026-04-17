@@ -13,7 +13,7 @@ class UserRepository:
     Репозиторий для выполнения операций с пользователями в базе данных.
     """
 
-    def init(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     async def get_user_by_login(self, login: str) -> Optional[Users]:
