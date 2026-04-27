@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy import select, update
 from src.database.database import SyncSessionLocal
-from src.database.models import ProductLinks, PriceHistory, Subscriptions, Users, Products, Alerts
+from src.database.models import ProductLinks, PriceHistory, Subscriptions, Users, Products, Alerts, Contacts
 
 
 class CelerySyncRepository:
@@ -242,5 +242,29 @@ class CelerySyncRepository:
             )
             result = db.execute(query)
             return result.scalar_one_or_none() is not None
+        finally:
+            db.close()
+
+    def get_user_email(self, user_id: int) -> Optional[str]:
+        """Получить email пользователя из контактов."""
+        db = SyncSessionLocal()
+        try:
+            query = select(Contacts.email).where(Contacts.user_id == user_id)
+            result = db.execute(query)
+            return result.scalar_one_or_none()
+        finally:
+            db.close()
+
+    def get_product_url(self, product_id: int) -> Optional[str]:
+        """Получить первую ссылку товара."""
+        db = SyncSessionLocal()
+        try:
+            query = (
+                select(ProductLinks.url)
+                .where(ProductLinks.product_id == product_id)
+                .limit(1)
+            )
+            result = db.execute(query)
+            return result.scalar_one_or_none()
         finally:
             db.close()
