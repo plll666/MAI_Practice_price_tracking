@@ -15,22 +15,42 @@ def run_spider_sync(url: str) -> dict | None:
     """Запустить ProbeSpider через subprocess."""
     parent = Path(__file__).parent.parent
     tmp_file = parent / f"scrape_{abs(hash(url))}.jsonl"
+    
+    if tmp_file.exists():
+        tmp_file.unlink()
 
+    logger.info(f"[run_spider] Запуск парсинга: {url[:80]}...")
+    
     process = subprocess.run(
         [sys.executable, "-m", "scrapy", "crawl", "parserpice", "-a", f"url={url}", "-o", str(tmp_file)],
         cwd=str(parent),
         capture_output=True,
         text=True,
-        timeout=60
+        timeout=90
     )
 
-    if process.returncode != 0 or not tmp_file.exists():
+    if process.returncode != 0:
+        logger.error(f"[run_spider] Scrapy вернул код {process.returncode} для {url[:80]}")
+        if process.stderr:
+            logger.error(f"[run_spider] stderr: {process.stderr[:500]}")
+        return None
+
+    if not tmp_file.exists():
+        logger.warning(f"[run_spider] Файл результата не создан для {url[:80]}")
         return None
 
     try:
         with open(tmp_file) as f:
-            data = json.loads(f.readline())
-        return data
+            line = f.readline()
+            if not line:
+                logger.warning(f"[run_spider] Пустой файл результата для {url[:80]}")
+                return None
+            data = json.loads(line)
+            logger.info(f"[run_spider] Успешно: {url[:80]}, price={data.get('price')}")
+            return data
+    except json.JSONDecodeError as e:
+        logger.error(f"[run_spider] Невалидный JSON для {url[:80]}: {e}")
+        return None
     finally:
         tmp_file.unlink(missing_ok=True)
 

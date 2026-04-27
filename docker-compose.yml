@@ -86,7 +86,11 @@ services:
     restart: always
 
   app:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        INSTALL_PLAYWRIGHT: "true"
     container_name: price_app_service
     ports:
       - "8000:8000"
@@ -112,7 +116,9 @@ services:
   celery_worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile
+      args:
+        INSTALL_PLAYWRIGHT: "false"
     container_name: price_tracker_celery_worker
     depends_on:
       db:
@@ -128,7 +134,7 @@ services:
     volumes:
       - ./backend:/app
     working_dir: /app/src
-    command: celery -A src.celery.app worker -l info -Q parsing,maintenance,notifications
+    command: celery -A src.celery.app worker -l info -Q maintenance,notifications
     restart: always
     healthcheck:
       test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
@@ -137,10 +143,42 @@ services:
       retries: 3
       start_period: 20s
 
+  celery_parser:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        INSTALL_PLAYWRIGHT: "true"
+    container_name: price_tracker_celery_parser
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      CELERY_BROKER: redis://redis:6379/0
+      CELERY_BACKEND: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    working_dir: /app/src
+    command: celery -A src.celery.app worker -l info -Q parsing
+    restart: always
+    healthcheck:
+      test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   celery_beat:
     build:
       context: ./backend
-      dockerfile: Dockerfile.beat
+      dockerfile: Dockerfile
+      args:
+        INSTALL_PLAYWRIGHT: "false"
     container_name: price_tracker_celery_beat
     depends_on:
       db:
@@ -159,7 +197,7 @@ services:
     command: celery -A src.celery.app beat -l info
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3

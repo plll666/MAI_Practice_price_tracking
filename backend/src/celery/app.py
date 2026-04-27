@@ -44,21 +44,25 @@ celery_app.conf.update(
             "task": "src.celery.tasks.parse_all_products",
             "schedule": parse_interval,
             "args": (),
+            "options": {"queue": "parsing"},
         },
         "cleanup-old-prices": {
             "task": "src.celery.tasks.cleanup_old_prices",
             "schedule": 20000000.0,
             "args": (30,),
+            "options": {"queue": "maintenance"},
         },
         "check-price-alerts": {
             "task": "src.celery.tasks.check_price_alerts",
             "schedule": 300.0,
             "args": (),
+            "options": {"queue": "notifications"},
         },
         "check-price-appeared": {
             "task": "src.celery.tasks.check_price_appeared",
             "schedule": 600.0,
             "args": (),
+            "options": {"queue": "notifications"},
         },
     },
 )
