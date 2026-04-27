@@ -30,11 +30,7 @@ services:
     restart: always
 
   app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "true"
+    image: kartonkaton/price-tracker-app:latest
     container_name: price_app_service
     restart: always
     depends_on:
@@ -51,11 +47,7 @@ services:
     init: true
 
   celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "false"
+    image: kartonkaton/price-tracker-celery-worker:latest
     container_name: price_tracker_celery_worker
     restart: always
     depends_on:
@@ -75,11 +67,7 @@ services:
       start_period: 20s
 
   celery_parser:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "true"
+    image: kartonkaton/price-tracker-celery-parser:latest
     container_name: price_tracker_celery_parser
     restart: always
     depends_on:
@@ -99,11 +87,7 @@ services:
       start_period: 30s
 
   celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "false"
+    image: kartonkaton/price-tracker-celery-beat:latest
     container_name: price_tracker_celery_beat
     restart: always
     depends_on:
@@ -123,9 +107,7 @@ services:
       start_period: 15s
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: kartonkaton/price-tracker-frontend:latest
     container_name: price_tracker_frontend
     restart: always
     volumes:
