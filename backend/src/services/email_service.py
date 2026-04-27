@@ -14,6 +14,8 @@ class EmailService:
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
         self.smtp_from = os.getenv("SMTP_FROM", "MAI Price Tracker")
         self.enabled = bool(self.smtp_user and self.smtp_password)
+        
+        logger.info(f"EmailService: host={self.smtp_host}, port={self.smtp_port}, user={self.smtp_user}, enabled={self.enabled}")
 
     def send_email(self, to: str, subject: str, html_body: str, max_retries: int = 3) -> bool:
         """Отправить email."""
@@ -31,9 +33,15 @@ class EmailService:
                 html_part = MIMEText(html_body, "html", "utf-8")
                 msg.attach(html_part)
 
-                with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
-                    server.login(self.smtp_user, self.smtp_password)
-                    server.sendmail(self.smtp_from, to, msg.as_string())
+                if self.smtp_port == 465:
+                    with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
+                        server.login(self.smtp_user, self.smtp_password)
+                        server.sendmail(self.smtp_from, to, msg.as_string())
+                else:
+                    with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                        server.starttls()
+                        server.login(self.smtp_user, self.smtp_password)
+                        server.sendmail(self.smtp_from, to, msg.as_string())
 
                 logger.info(f"Email sent to {to}: {subject}")
                 return True
