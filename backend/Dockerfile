@@ -1,17 +1,21 @@
-FROM python:3.11-slim
-
+FROM python:3.11-slim AS base
 WORKDIR /app
-
-ARG INSTALL_PLAYWRIGHT=false
-
 ENV PYTHONPATH=/app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
-    playwright install-deps chromium && \
-    playwright install chromium; \
-    fi
+RUN pip install uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen
 
+FROM base AS with-playwright
+RUN uvx playwright install && \
+    uvx playwright install-deps chromium
+
+FROM with-playwright AS app в
+COPY . .
+
+FROM base AS worker
 COPY . .

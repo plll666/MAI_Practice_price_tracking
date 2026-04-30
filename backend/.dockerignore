@@ -1,32 +1,46 @@
-# 1. Окружение
-../.env/
-venv/
-env/
-ENV/
-../.env.example
+# Виртуальные окружения
+.venv
+venv
+env
+.env
+*.pyc
+__pycache__/
 
-# 2. Кэш Python
-**/__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.mypy_cache/
-
-# 3. Секреты и конфигурация
-../.env
-.env_db
+# Файлы IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
-
-postgres_data/
-*.log
-
-
-.git
+# Git
+.git/
 .gitignore
 
-# 6. Docker-специфичные файлы
-../../Dockerfile
-../../../docker-compose.yml
+# Логи и временные файлы
+*.log
+*.tmp
+*.cache
+.pytest_cache/
+.ruff_cache/
+
+# Докер файлы
+Dockerfile
 .dockerignore
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Alembic версии могут быть, но не нужно копировать __pycache__
+alembic/__pycache__/
+alembic/versions/__pycache__/
+
+# Файлы данных
+*.db
+*.sqlite
+*.sqlite3
+
+# OS файлы
+.DS_Store
+Thumbs.db

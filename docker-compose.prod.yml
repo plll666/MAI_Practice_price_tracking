@@ -29,9 +29,9 @@ services:
       retries: 5
     restart: always
 
-  app:
+  price_app_backend:
     image: kartonkaton/price-tracker-app:latest
-    container_name: price_app_service
+    container_name: price_app_backend
     restart: always
     depends_on:
       db: {condition: service_healthy}
@@ -43,7 +43,7 @@ services:
       - CELERY_BROKER=redis://redis:6379/0
       - CELERY_BACKEND=redis://redis:6379/0
     command: >
-      sh -c "cd src alembic upgrade head && python main.py"
+      sh -c "uv run alembic -c src/alembic.ini upgrade head && uv run python -m src.main"
     init: true
 
   celery_worker:
@@ -53,13 +53,14 @@ services:
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_healthy}
+      price_app_backend: {condition: service_started}
     env_file: [.env]
     environment:
       - DB_HOST=db
       - CELERY_BROKER=redis://redis:6379/0
       - CELERY_BACKEND=redis://redis:6379/0
     entrypoint: []
-    command: python3 -m celery -A src.celery.app worker -l info -Q maintenance,notifications
+    command: uv run celery -A src.celery.app worker -l info -Q maintenance,notifications
     healthcheck:
       test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
       interval: 30s
@@ -74,13 +75,14 @@ services:
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_healthy}
+      price_app_backend: {condition: service_started}
     env_file: [.env]
     environment:
       - DB_HOST=db
       - CELERY_BROKER=redis://redis:6379/0
       - CELERY_BACKEND=redis://redis:6379/0
     entrypoint: []
-    command: python3 -m celery -A src.celery.app worker -l info -Q parsing
+    command: uv run celery -A src.celery.app worker -l info -Q parsing
     healthcheck:
       test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
       interval: 30s
@@ -95,13 +97,14 @@ services:
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_healthy}
+      price_app_backend: {condition: service_started}
     env_file: [.env]
     environment:
       - DB_HOST=db
       - CELERY_BROKER=redis://redis:6379/0
       - CELERY_BACKEND=redis://redis:6379/0
     entrypoint: []
-    command: python3 -m celery -A src.celery.app beat -l info
+    command: uv run celery -A src.celery.app beat -l info
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 0"]
       interval: 30s
@@ -130,7 +133,7 @@ services:
       - /home/flyt_t1_1/projects/ddln/stats:/var/log/nginx/stats:ro
       - /home/flyt_t1_1/prod/.htpasswd:/etc/nginx/.htpasswd:ro
     depends_on:
-      - app
+      - price_app_backend
       - frontend
 
   goaccess:

@@ -29,8 +29,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-app:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            INSTALL_PLAYWRIGHT=true
+          target: app
 
       - name: Build and push Celery Worker
         uses: docker/build-push-action@v7
@@ -41,8 +40,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-celery-worker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            INSTALL_PLAYWRIGHT=false
+          target: worker
 
       - name: Build and push Celery Parser
         uses: docker/build-push-action@v7
@@ -53,8 +51,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-celery-parser:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            INSTALL_PLAYWRIGHT=true
+          target: app
 
       - name: Build and push Celery Beat
         uses: docker/build-push-action@v7
@@ -65,8 +62,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/price-tracker-celery-beat:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            INSTALL_PLAYWRIGHT=false
+          target: worker
 
       - name: Build and push Frontend
         uses: docker/build-push-action@v7

@@ -8,7 +8,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://app:8000', 
+        target: 'http://price_app_backend:8000', 
         changeOrigin: true,
         secure: false,
       },

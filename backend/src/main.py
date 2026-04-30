@@ -49,6 +49,11 @@ def read_root():
     return {"message": "Service is running"}
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "src.main:app",

@@ -22,9 +22,9 @@ class ProbeSpider(scrapy.Spider):
 
     def start_requests(self):
         yield scrapy.Request(
-            self.start_url, 
+            self.start_url,
             meta={
-                "playwright": True, 
+                "playwright": True,
                 "playwright_include_page": True,
                 "playwright_page_init_callback": self.init_page,
                 "playwright_page_goto_kwargs": {
@@ -42,10 +42,11 @@ class ProbeSpider(scrapy.Spider):
         )
 
     async def init_page(self, page, request):
-        bad_stuff = re.compile(r"\.(jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|otf|ico)$|tracker|analytics|top-fwz1|google|jivosite")
+        bad_stuff = re.compile(
+            r"\.(jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|otf|ico)$|tracker|analytics|top-fwz1|google|jivosite")
         await page.route(bad_stuff, lambda route: route.abort())
         await self.stealth_config.apply_stealth_async(page)
-        
+
         await page.setExtraHTTPHeaders({
             "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
         })
@@ -55,14 +56,14 @@ class ProbeSpider(scrapy.Spider):
 
     async def parse(self, response):
         page = response.meta["playwright_page"]
-        
+
         try:
             await page.wait_for_timeout(2000)
-            
+
             item = await self.parse_json_ld(response)
             if not item:
                 item = await self.parse_html_fallback(page, response)
-            
+
             if item:
                 yield item
             else:
@@ -78,9 +79,10 @@ class ProbeSpider(scrapy.Spider):
     async def parse_json_ld(self, response) -> ParsedProduct | None:
         """Парсинг JSON-LD разметки."""
         content = await response.meta["playwright_page"].content()
-        
-        scripts = re.findall(r'<script [^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', content, re.DOTALL)
-        
+
+        scripts = re.findall(r'<script [^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', content,
+                             re.DOTALL)
+
         if not scripts:
             sel = scrapy.Selector(text=content)
             scripts = sel.xpath('//script[@type="application/ld+json"]/text()').getall()
@@ -89,17 +91,17 @@ class ProbeSpider(scrapy.Spider):
             raw_clean = raw.strip()
             if not raw_clean or '"Product"' not in raw_clean:
                 continue
-            
+
             try:
                 data = json.loads(raw_clean)
                 objs = data if isinstance(data, list) else [data]
-                
+
                 for obj in objs:
                     if isinstance(obj, dict) and obj.get('@type') == 'Product':
                         return self.extract_product_from_json_ld(obj, response.url)
             except json.JSONDecodeError:
                 continue
-        
+
         return None
 
     def extract_product_from_json_ld(self, obj: dict, url: str) -> ParsedProduct:
@@ -107,7 +109,7 @@ class ProbeSpider(scrapy.Spider):
         offers = obj.get('offers', {})
         if isinstance(offers, list) and offers:
             offers = offers[0]
-        
+
         price_val = offers.get('price', 0) if offers else 0
         clean_price = int(re.sub(r'[^\d]', '', str(price_val))) if price_val else 0
 
@@ -126,7 +128,7 @@ class ProbeSpider(scrapy.Spider):
 
         brand_info = obj.get('brand', {})
         brand = brand_info.get('name') if isinstance(brand_info, dict) else brand_info
-        
+
         return ParsedProduct(
             title=str(obj.get('name', '')).strip(),
             price=clean_price,
@@ -140,7 +142,7 @@ class ProbeSpider(scrapy.Spider):
 
     async def parse_html_fallback(self, page, response) -> ParsedProduct | None:
         """Fallback парсинг из HTML если JSON-LD не найден."""
-        
+
         price_selectors = [
             'meta[property="product:price:amount"]::attr(content)',
             'meta[property="og:price:amount"]::attr(content)',
@@ -160,7 +162,7 @@ class ProbeSpider(scrapy.Spider):
             '.special-price .price::text',
             '.regular-price .price::text',
         ]
-        
+
         price = 0
         for selector in price_selectors:
             try:
@@ -175,7 +177,7 @@ class ProbeSpider(scrapy.Spider):
                             break
             except Exception:
                 continue
-        
+
         if not price:
             try:
                 price_elem = await page.query_selector('[class*="price"], .Price, #price, .price')
@@ -196,7 +198,7 @@ class ProbeSpider(scrapy.Spider):
             'h1::text',
             '[data-testid="product-title"]::text',
         ]
-        
+
         title = ""
         for selector in title_selectors:
             try:
@@ -208,7 +210,7 @@ class ProbeSpider(scrapy.Spider):
                         break
             except Exception:
                 continue
-        
+
         if not title:
             try:
                 h1 = await page.query_selector('h1')
@@ -228,7 +230,7 @@ class ProbeSpider(scrapy.Spider):
             '#main-image::attr(src)',
             '.main-image img::attr(src)',
         ]
-        
+
         image_url = ""
         for selector in image_selectors:
             try:
@@ -239,7 +241,7 @@ class ProbeSpider(scrapy.Spider):
                         break
             except Exception:
                 continue
-        
+
         if image_url.startswith('//'):
             image_url = 'https:' + image_url
 

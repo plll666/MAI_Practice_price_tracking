@@ -85,13 +85,12 @@ services:
       retries: 5
     restart: always
 
-  app:
+  price_app_backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "true"
-    container_name: price_app_service
+      target: app
+    container_name: price_app_backend
     ports:
       - "8000:8000"
     depends_on:
@@ -103,38 +102,48 @@ services:
       - .env
     environment:
       DB_HOST: db
+      REDIS_HOST: redis
       CELERY_BROKER: redis://redis:6379/0
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
-    working_dir: /app/src
+    working_dir: /app
     init: true
     ipc: host
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: >
-      sh -c "alembic upgrade head && python main.py"
+      sh -c "uv run alembic -c src/alembic.ini upgrade head && 
+             uv run python -m src.main"
 
   celery_worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "false"
+      target: worker
     container_name: price_tracker_celery_worker
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      price_app_backend:
+        condition: service_started
     env_file:
       - .env
     environment:
       DB_HOST: db
+      REDIS_HOST: redis
       CELERY_BROKER: redis://redis:6379/0
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
-    working_dir: /app/src
-    command: celery -A src.celery.app worker -l info -Q maintenance,notifications
+    working_dir: /app
+    command: uv run celery -A src.celery.app worker -l info -Q maintenance,notifications
     restart: always
     healthcheck:
       test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
@@ -147,24 +156,26 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "true"
+      target: app
     container_name: price_tracker_celery_parser
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      price_app_backend:
+        condition: service_started
     env_file:
       - .env
     environment:
       DB_HOST: db
+      REDIS_HOST: redis
       CELERY_BROKER: redis://redis:6379/0
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
-    working_dir: /app/src
-    command: celery -A src.celery.app worker -l info -Q parsing
+    working_dir: /app
+    command: uv run celery -A src.celery.app worker -l info -Q parsing
     restart: always
     healthcheck:
       test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
@@ -177,24 +188,26 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      args:
-        INSTALL_PLAYWRIGHT: "false"
+      target: worker
     container_name: price_tracker_celery_beat
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      price_app_backend:
+        condition: service_started
     env_file:
       - .env
     environment:
       DB_HOST: db
+      REDIS_HOST: redis
       CELERY_BROKER: redis://redis:6379/0
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
-    working_dir: /app/src
-    command: celery -A src.celery.app beat -l info
+    working_dir: /app
+    command: uv run celery -A src.celery.app beat -l info
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 0"]
@@ -211,11 +224,11 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - app
+      - price_app_backend
     environment:
       VITE_API_URL: /api
     volumes:
-      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
     restart: always
 
 volumes:

@@ -1,0 +1,50 @@
+# Виртуальные окружения
+.venv
+venv
+env
+*.pyc
+__pycache__/
+
+# Backend
+backend/.venv
+backend/__pycache__/
+backend/**/__pycache__/
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.next
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Git
+.git/
+.gitignore
+
+# Логи
+*.log
+logs/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Env файлы
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data
+*.db
+*.sqlite
+*.sqlite3
+data/
