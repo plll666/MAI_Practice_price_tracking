@@ -32,11 +32,20 @@ def run_spider_sync(url: str) -> dict | None:
     if process.returncode != 0:
         logger.error(f"[run_spider] Scrapy вернул код {process.returncode} для {url[:80]}")
         if process.stderr:
-            logger.error(f"[run_spider] stderr: {process.stderr[:500]}")
+            logger.error(f"[run_spider] stderr: {process.stderr[:2000]}")
+            stderr_file = parent / f"scrapy_error_{abs(hash(url))}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            with open(stderr_file, "w", encoding="utf-8") as sf:
+                sf.write(process.stderr)
+            logger.info(f"[run_spider] Полный stderr сохранён в: {stderr_file}")
         return None
 
     if not tmp_file.exists():
         logger.warning(f"[run_spider] Файл результата не создан для {url[:80]}")
+        if process.stderr:
+            debug_file = parent / f"scrapy_debug_{abs(hash(url))}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            with open(debug_file, "w", encoding="utf-8") as df:
+                df.write(f"=== STDOUT ===\n{process.stdout}\n\n=== STDERR ===\n{process.stderr}")
+            logger.info(f"[run_spider] Stdout/stderr сохранены для отладки: {debug_file}")
         return None
 
     try:
@@ -181,3 +190,53 @@ def parse_all_products_task(self) -> dict[str, Any]:
         logger.error(f"[parse_all] Критическая ошибка: {str(e)}")
 
         return {"status": "error", "error": str(e)}
+
+
+@celery_app.task(bind=True, name="src.celery.tasks.parse_url")
+def parse_url_task(self, url: str, user_id: int) -> dict[str, Any]:
+    """Парсить товар по URL и сохранить в БД. Возвращает данные для сохранения."""
+    logger.info(f"[parse_url] Начало парсинга URL: {url[:80]}...")
+    
+    repo = CelerySyncRepository()
+    
+    try:
+        scraped = run_spider_sync(url)
+        
+        if not scraped:
+            logger.warning(f"[parse_url] Парсинг не удался для URL: {url[:80]}")
+            return {"status": "error", "error": "Parse failed", "url": url}
+        
+        price = scraped.get('price', 0)
+        
+        raw_image = scraped.get("image_url", "")
+        if raw_image.startswith("//"):
+            image_url = f"https:{raw_image}"
+        elif raw_image and not raw_image.startswith("http"):
+            image_url = f"https://{scraped.get('source')}{raw_image}"
+        else:
+            image_url = raw_image
+            
+        props = scraped.get("properties", {})
+        if not isinstance(props, dict):
+            props = {}
+        keys_to_remove = ["image", "image_url", "images", "@context", "@type", "review", "aggregateRating", "offers"]
+        for key in keys_to_remove:
+            props.pop(key, None)
+        
+        result_data = {
+            "status": "success",
+            "url": url,
+            "user_id": user_id,
+            "title": scraped.get("title") or "Без названия",
+            "brand": scraped.get("brand") or "Unknown",
+            "price": int(price),
+            "image_url": image_url,
+            "properties": props,
+        }
+        
+        logger.info(f"[parse_url] Успешно! URL: {url[:80]}, цена={price}")
+        return result_data
+        
+    except Exception as e:
+        logger.error(f"[parse_url] Ошибка парсинга URL: {url[:80]}: {str(e)}")
+        return {"status": "error", "error": str(e), "url": url}

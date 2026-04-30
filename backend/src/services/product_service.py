@@ -1,7 +1,8 @@
 import json
 import os
 import random
-import asyncio
+from celery.result import AsyncResult
+from src.celery.app import celery_app
 from src.repositories.product_repository import ProductRepository
 from src.schemas.products import ProductCreate
 from src.core.logger import logger
@@ -10,39 +11,31 @@ from fastapi import HTTPException
 class ProductService:
     def __init__(self, repo: ProductRepository):
         self.repo = repo
+    
     async def add_and_parse_product(self, user_id: int, product_data: ProductCreate):
-        url_str = str(product_data.url)        
-        tmp_filename = f"scraped_{random.randint(100000, 999999)}.jsonl"
+        url_str = str(product_data.url)
         
         try:
             logger.info(f"Запуск парсинга для URL: {url_str}")
-            process = await asyncio.create_subprocess_exec(
-                "scrapy", "crawl", "parserpice",
-                "-a", f"url={url_str}",
-                "-o", tmp_filename,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+            
+            task = celery_app.send_task(
+                "src.celery.tasks.parse_url",
+                args=[url_str, user_id],
+                queue="parsing"
             )
             
             try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60.0)
-            except asyncio.TimeoutError:
-                process.kill()
-                raise HTTPException(status_code=408, detail="Parsing timeout")
-
-            if process.returncode != 0:
-                raise Exception(f"Parser error: {stderr.decode()}")
-
-            scraped_item = None
-            if os.path.exists(tmp_filename):
-                with open(tmp_filename, "r", encoding="utf-8") as f:
-                    line = f.readline()
-                    if line:
-                        scraped_item = json.loads(line)
-
-            if not scraped_item:
-                raise Exception("No data scraped")
-
+                result = task.get(timeout=90)
+            except Exception as e:
+                logger.error(f"Celery task timeout or error: {e}")
+                raise HTTPException(status_code=408, detail="Parsing timeout or error")
+            
+            if result.get("status") == "error":
+                error_msg = result.get("error", "Parsing failed")
+                raise HTTPException(status_code=500, detail=error_msg)
+            
+            scraped_item = result
+            
             raw_image = scraped_item.get("image_url", "")
             if raw_image.startswith("//"):
                 image_url = f"https:{raw_image}"
@@ -78,9 +71,6 @@ class ProductService:
         except Exception as e:
             logger.error(f"Service Error: {e}")
             raise HTTPException(status_code=500, detail=str(e))
-        finally:
-            if os.path.exists(tmp_filename):
-                os.remove(tmp_filename)
     async def get_all_products(self, user_id: int):
         return await self.repo.get_all_products(user_id=user_id)
     async def get_product_by_id(self, product_id: int, user_id: int = None):

@@ -107,6 +107,7 @@ services:
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
+      - /app/.venv
     working_dir: /app
     init: true
     ipc: host
@@ -142,6 +143,7 @@ services:
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
+      - /app/.venv
     working_dir: /app
     command: uv run celery -A src.celery.app worker -l info -Q maintenance,notifications
     restart: always
@@ -174,6 +176,7 @@ services:
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
+      - /app/.venv
     working_dir: /app
     command: uv run celery -A src.celery.app worker -l info -Q parsing
     restart: always
@@ -206,6 +209,7 @@ services:
       CELERY_BACKEND: redis://redis:6379/0
     volumes:
       - ./backend:/app
+      - /app/.venv
     working_dir: /app
     command: uv run celery -A src.celery.app beat -l info
     restart: always

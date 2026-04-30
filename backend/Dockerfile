@@ -11,11 +11,11 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen
 
 FROM base AS with-playwright
-RUN uvx playwright install && \
-    uvx playwright install-deps chromium
+RUN .venv/bin/playwright install && \
+    .venv/bin/playwright install-deps chromium
 
-FROM with-playwright AS app в
+FROM with-playwright AS app
 COPY . .
 
-FROM base AS worker
+FROM with-playwright AS worker
 COPY . .

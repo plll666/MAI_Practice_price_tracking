@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError, jwt
 from src.core.hashid import encode_id, decode_id
+from celery.result import AsyncResult
 
 from src.database.database import get_db
 from src.database.models import Subscriptions, PriceHistory, ProductLinks
@@ -22,6 +23,7 @@ from src.services.product_service import ProductService
 from src.services.price_service import PriceService
 from src.core.security import SECRET_KEY, ALGORITHM
 from src.core.logger import logger
+from src.celery.app import celery_app
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter(prefix="/products", tags=["Products"])

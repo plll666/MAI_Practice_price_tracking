@@ -32,6 +32,7 @@ celery_app.conf.update(
     task_time_limit=30 * 60,
     worker_prefetch_multiplier=1,
     task_routes={
+        "src.celery.tasks.parse_url": {"queue": "parsing"},
         "src.celery.tasks.parse_product": {"queue": "parsing"},
         "src.celery.tasks.parse_user_products": {"queue": "parsing"},
         "src.celery.tasks.parse_all_products": {"queue": "parsing"},
