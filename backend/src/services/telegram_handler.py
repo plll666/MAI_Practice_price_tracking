@@ -32,13 +32,13 @@ class TelegramHandler:
         user = result.scalar_one_or_none()
 
         if user:
-            await self.telegram_service.send_message(
+            self.telegram_service.send_message(
                 chat_id=chat_id,
                 text="✅ Ваш Telegram уже привязан к аккаунту!"
             )
             return
 
-        await self.telegram_service.send_message(
+        self.telegram_service.send_message(
             chat_id=chat_id,
             text=(
                 "👋 Привет! Я бот уведомлений MAI Price Tracker.\n\n"
@@ -63,7 +63,7 @@ class TelegramHandler:
         user = result.scalar_one_or_none()
 
         if not user:
-            await self.telegram_service.send_message(
+            self.telegram_service.send_message(
                 chat_id=chat_id,
                 text="❌ Неверный или устаревший код. Получите новый код в настройках."
             )
@@ -74,7 +74,7 @@ class TelegramHandler:
         user.telegram_linking_code_expires = None
         await db.commit()
 
-        await self.telegram_service.send_message(
+        self.telegram_service.send_message(
             chat_id=chat_id,
             text=(
                 "✅ Telegram успешно подключен!\n\n"
@@ -88,7 +88,7 @@ class TelegramHandler:
         user = result.scalar_one_or_none()
 
         if not user:
-            await self.telegram_service.send_message(
+            self.telegram_service.send_message(
                 chat_id=chat_id,
                 text="❌ Ваш Telegram не привязан к аккаунту."
             )
@@ -100,7 +100,7 @@ class TelegramHandler:
         user.telegram_linking_code_expires = None
         await db.commit()
 
-        await self.telegram_service.send_message(
+        self.telegram_service.send_message(
             chat_id=chat_id,
             text="✅ Telegram успешно отвязан от аккаунта."
         )
