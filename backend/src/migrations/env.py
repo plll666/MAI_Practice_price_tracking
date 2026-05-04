@@ -3,10 +3,24 @@ from pathlib import Path
 from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine
+import os
+from dotenv import load_dotenv
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from src.database.database import DATABASE_URL
+env_path = Path(__file__).parent.parent.parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    user = os.getenv("POSTGRES_USER", "postgres")
+    password = os.getenv("POSTGRES_PASSWORD", "postgres")
+    host = os.getenv("DB_HOST", "localhost")
+    port = os.getenv("DB_PORT", "5432")
+    db = os.getenv("POSTGRES_DB", "price_tracker")
+    DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+
 from src.database.models import Base
 
 # this is the Alembic Config object, which provides

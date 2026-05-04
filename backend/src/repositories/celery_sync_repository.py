@@ -297,3 +297,71 @@ class CelerySyncRepository:
             return result.scalar_one_or_none()
         finally:
             db.close()
+
+    def get_user_chat_id(self, user_id: int) -> Optional[str]:
+        """Получить chat_id пользователя."""
+        db = SyncSessionLocal()
+        try:
+            query = select(Users.chat_id).where(Users.id == user_id)
+            result = db.execute(query)
+            return result.scalar_one_or_none()
+        finally:
+            db.close()
+
+    def is_telegram_notifications_enabled(self, user_id: int) -> bool:
+        """Проверить, включены ли Telegram-уведомления."""
+        db = SyncSessionLocal()
+        try:
+            query = select(Users.telegram_notifications_enabled).where(Users.id == user_id)
+            result = db.execute(query)
+            enabled = result.scalar_one_or_none()
+            return enabled if enabled is not None else False
+        finally:
+            db.close()
+
+    def is_email_notifications_enabled(self, user_id: int) -> bool:
+        """Проверить, включены ли Email-уведомления."""
+        db = SyncSessionLocal()
+        try:
+            query = select(Users.email_notifications_enabled).where(Users.id == user_id)
+            result = db.execute(query)
+            enabled = result.scalar_one_or_none()
+            return enabled if enabled is not None else True
+        finally:
+            db.close()
+
+    def get_user_telegram_username(self, user_id: int) -> Optional[str]:
+        """Получить Telegram username пользователя."""
+        db = SyncSessionLocal()
+        try:
+            query = select(Contacts.tg).where(Contacts.user_id == user_id)
+            result = db.execute(query)
+            return result.scalar_one_or_none()
+        finally:
+            db.close()
+
+    def save_telegram_chat_id(self, user_id: int, chat_id: str) -> None:
+        """Сохранить chat_id после привязки."""
+        db = SyncSessionLocal()
+        try:
+            db.execute(
+                update(Users)
+                .where(Users.id == user_id)
+                .values(chat_id=chat_id, telegram_linking_code=None, telegram_linking_code_expires=None)
+            )
+            db.commit()
+        finally:
+            db.close()
+
+    def clear_telegram_linking_code(self, user_id: int) -> None:
+        """Очистить код привязки."""
+        db = SyncSessionLocal()
+        try:
+            db.execute(
+                update(Users)
+                .where(Users.id == user_id)
+                .values(telegram_linking_code=None, telegram_linking_code_expires=None)
+            )
+            db.commit()
+        finally:
+            db.close()

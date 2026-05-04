@@ -51,7 +51,7 @@ class PriceHistory(Base):
 
 class Users(Base):
     __tablename__ = 'users'
-    
+
     id = Column(Integer, primary_key=True)
     login = Column(String(50), nullable=False, unique=True)
     password_hash = Column(Text)
@@ -59,7 +59,11 @@ class Users(Base):
     is_active = Column(Boolean, default=True)
     parse_interval = Column(Integer, default=3600)
     last_parse_at = Column(DateTime, nullable=True)
-    
+    telegram_notifications_enabled = Column(Boolean, default=False)
+    email_notifications_enabled = Column(Boolean, default=True)
+    telegram_linking_code = Column(String(6), nullable=True)
+    telegram_linking_code_expires = Column(DateTime, nullable=True)
+
     subscriptions = relationship("Subscriptions", back_populates="user")
     contacts = relationship("Contacts", uselist=False, back_populates="user", lazy="joined")
 
