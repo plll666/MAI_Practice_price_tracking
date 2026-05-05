@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy import select, update
+
 from src.database.database import SyncSessionLocal
 from src.database.models import ProductLinks, PriceHistory, Subscriptions, Users, Products, Alerts, Contacts
 
@@ -92,7 +93,8 @@ class CelerySyncRepository:
                     Subscriptions.id,
                     Subscriptions.user_id,
                     Subscriptions.product_id,
-                    Subscriptions.target_price
+                    Subscriptions.target_price,
+                    Subscriptions.notified_at
                 )
                 .where(Subscriptions.target_price.isnot(None))
             )
@@ -103,10 +105,37 @@ class CelerySyncRepository:
                     "id": row.id,
                     "user_id": row.user_id,
                     "product_id": row.product_id,
-                    "target_price": float(row.target_price)
+                    "target_price": float(row.target_price),
+                    "notified_at": row.notified_at
                 }
                 for row in rows
             ]
+        finally:
+            db.close()
+
+    def set_subscription_notified(self, subscription_id: int) -> None:
+        """Установить время уведомления для подписки."""
+        db = SyncSessionLocal()
+        try:
+            db.execute(
+                update(Subscriptions)
+                .where(Subscriptions.id == subscription_id)
+                .values(notified_at=datetime.utcnow())
+            )
+            db.commit()
+        finally:
+            db.close()
+
+    def reset_subscription_notified(self, subscription_id: int) -> None:
+        """Сбросить время уведомления (когда цена поднялась выше цели)."""
+        db = SyncSessionLocal()
+        try:
+            db.execute(
+                update(Subscriptions)
+                .where(Subscriptions.id == subscription_id)
+                .values(notified_at=None)
+            )
+            db.commit()
         finally:
             db.close()
 

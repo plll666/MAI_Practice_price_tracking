@@ -71,6 +71,7 @@ class Subscriptions(Base):
     product_id = Column(Integer, ForeignKey('products.id'))
     created_at = Column(DateTime, server_default=func.now())
     target_price = Column(Numeric(12, 2))
+    notified_at = Column(DateTime, nullable=True)
 
     user = relationship("Users", back_populates="subscriptions")
     product = relationship("Products", back_populates="subscriptions")
