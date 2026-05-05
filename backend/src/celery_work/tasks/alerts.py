@@ -6,7 +6,7 @@ from src.repositories.celery_sync_repository import CelerySyncRepository
 from src.services.email_service import EmailService
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.check_price_alerts")
+@celery_app.task(bind=True, name="src.celery_work.tasks.check_price_alerts")
 def check_price_alerts_task(self) -> dict[str, Any]:
     logger.info("Checking for price alerts")
     
@@ -75,7 +75,7 @@ def check_price_alerts_task(self) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.check_price_appeared")
+@celery_app.task(bind=True, name="src.celery_work.tasks.check_price_appeared")
 def check_price_appeared_task(self) -> dict[str, Any]:
     """Проверить появление товаров в наличии (цена была 0, стала > 0)."""
     logger.info("Checking for price appeared alerts")

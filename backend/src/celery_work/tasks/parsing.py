@@ -64,7 +64,7 @@ def run_spider_sync(url: str) -> dict | None:
         tmp_file.unlink(missing_ok=True)
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.parse_product")
+@celery_app.task(bind=True, name="src.celery_work.tasks.parse_product")
 def parse_product_task(self, link_id: int) -> dict[str, Any]:
     """Парсить товар по link_id и сохранить цену в БД."""
     logger.info(f"[parse_product] Начало парсинга товара link_id={link_id}")
@@ -97,7 +97,7 @@ def parse_product_task(self, link_id: int) -> dict[str, Any]:
         return {"status": "error", "link_id": link_id, "error": str(e)}
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.parse_user_products")
+@celery_app.task(bind=True, name="src.celery_work.tasks.parse_user_products")
 def parse_user_products_task(self, user_id: int) -> dict[str, Any]:
     """Парсить все продукты пользователя."""
     logger.info(f"[parse_user_products] Начало парсинга для пользователя user_id={user_id}")
@@ -125,7 +125,7 @@ def parse_user_products_task(self, user_id: int) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.check_users_parse_schedule")
+@celery_app.task(bind=True, name="src.celery_work.tasks.check_users_parse_schedule")
 def check_users_parse_schedule_task(self) -> dict[str, Any]:
     """Проверить расписание парсинга пользователей."""
     logger.info(f"[check_schedule] Проверка расписания пользователей")
@@ -150,7 +150,7 @@ def check_users_parse_schedule_task(self) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.parse_all_products")
+@celery_app.task(bind=True, name="src.celery_work.tasks.parse_all_products")
 def parse_all_products_task(self) -> dict[str, Any]:
     """Парсить все товары из таблицы ProductLinks."""
 
@@ -192,7 +192,7 @@ def parse_all_products_task(self) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@celery_app.task(bind=True, name="src.celery.tasks.parse_url")
+@celery_app.task(bind=True, name="src.celery_work.tasks.parse_url")
 def parse_url_task(self, url: str, user_id: int) -> dict[str, Any]:
     """Парсить товар по URL и сохранить в БД. Возвращает данные для сохранения."""
     logger.info(f"[parse_url] Начало парсинга URL: {url[:80]}...")
