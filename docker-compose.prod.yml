@@ -105,7 +105,7 @@ services:
       - CELERY_BROKER=redis://redis:6379/0
       - CELERY_BACKEND=redis://redis:6379/0
     entrypoint: []
-    command: uv run celery -A src.celery.app beat -l info
+    command: uv run celery -A src.celery_work.app beat -l info
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 0"]
       interval: 30s
