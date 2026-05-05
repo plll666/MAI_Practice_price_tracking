@@ -145,10 +145,10 @@ services:
       - ./backend:/app
       - /app/.venv
     working_dir: /app
-    command: uv run celery -A src.celery.app worker -l info -Q maintenance,notifications
+    command: uv run celery -A src.celery_work.app worker -l info -Q maintenance,notifications
     restart: always
     healthcheck:
-      test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
+      test: ["CMD", "celery", "-A", "src.celery_work.app", "inspect", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -178,10 +178,10 @@ services:
       - ./backend:/app
       - /app/.venv
     working_dir: /app
-    command: uv run celery -A src.celery.app worker -l info -Q parsing
+    command: uv run celery -A src.celery_work.app worker -l info -Q parsing
     restart: always
     healthcheck:
-      test: ["CMD", "celery", "-A", "src.celery.app", "inspect", "ping"]
+      test: ["CMD", "celery", "-A", "src.celery_work.app", "inspect", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -211,7 +211,7 @@ services:
       - ./backend:/app
       - /app/.venv
     working_dir: /app
-    command: uv run celery -A src.celery.app beat -l info
+    command: uv run celery -A src.celery_work.app beat -l info
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 0"]

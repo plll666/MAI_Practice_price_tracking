@@ -1,8 +1,7 @@
 import json
 import os
 import random
-from celery.result import AsyncResult
-from src.celery.app import celery_app
+from src.celery_work.app import celery_app
 from src.repositories.product_repository import ProductRepository
 from src.schemas.products import ProductCreate
 from src.core.logger import logger

@@ -3,7 +3,7 @@ from typing import Any
 
 from sqlalchemy import delete
 
-from src.celery.app import celery_app
+from src.celery_work.app import celery_app
 from src.core.logger import logger
 from src.database.database import SyncSessionLocal
 from src.database.models import PriceHistory

@@ -1,4 +1,4 @@
-import json
+# import json
 import subprocess
 import sys
 import os
@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from src.celery.app import celery_app
+from src.celery_work.app import celery_app
 from src.core.logger import logger
 from src.repositories.celery_sync_repository import CelerySyncRepository
 
