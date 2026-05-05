@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError, jwt
 from src.core.hashid import encode_id, decode_id
-from celery.result import AsyncResult
 
 from src.database.database import get_db
 from src.database.models import Subscriptions, PriceHistory, ProductLinks
