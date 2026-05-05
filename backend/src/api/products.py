@@ -22,7 +22,7 @@ from src.services.product_service import ProductService
 from src.services.price_service import PriceService
 from src.core.security import SECRET_KEY, ALGORITHM
 from src.core.logger import logger
-from src.celery.app import celery_app
+from src.celery_work.app import celery_app
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter(prefix="/products", tags=["Products"])

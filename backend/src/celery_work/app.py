@@ -18,9 +18,9 @@ celery_app = Celery(
     backend=backend_url
 )
 
-import src.celery.tasks.alerts  # noqa
-import src.celery.tasks.maintenance # noqa
-import src.celery.tasks.parsing # noqa
+import src.celery_work.tasks.alerts  # noqa
+import src.celery_work.tasks.maintenance # noqa
+import src.celery_work.tasks.parsing # noqa
 
 celery_app.conf.update(
     task_serializer="json",
