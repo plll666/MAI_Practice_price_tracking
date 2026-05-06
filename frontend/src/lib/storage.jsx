@@ -340,3 +340,77 @@ export const getAnalytics = async (days = 30) => {
     };
   }
 };
+
+export const getNotificationSettings = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/settings/notifications`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) {
+      return {
+        telegram_notifications: false,
+        email_notifications: true,
+        telegram_connected: false
+      };
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to get notification settings:', error);
+    return {
+      telegram_notifications: false,
+      email_notifications: true,
+      telegram_connected: false
+    };
+  }
+};
+
+export const saveNotificationSettings = async (settings) => {
+  try {
+    const response = await fetch(`${API_BASE}/settings/notifications`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        telegram_notifications: settings.telegramNotifications,
+        email_notifications: settings.emailNotifications
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка сохранения настроек уведомлений');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to save notification settings:', error);
+    throw error;
+  }
+};
+
+export const generateTelegramLinkCode = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/settings/telegram/link-code`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка генерации кода');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to generate telegram link code:', error);
+    throw error;
+  }
+};
+
+export const getTelegramStatus = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/settings/telegram/status`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) return { connected: false, chat_id: null };
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to get telegram status:', error);
+    return { connected: false, chat_id: null };
+  }
+};

@@ -1,7 +1,10 @@
-// Settings.jsx
 import { useState, useEffect, useCallback, memo } from 'react';
 import { Download, Trash2, Bell, Database, Clock, Mail, Phone, Send, BellRing, Save, CheckCircle, AlertCircle, Edit2, X } from 'lucide-react';
-import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules, saveUserSettings, getUserSettings, getParseInterval, setParseInterval, getUserContacts, updateUserContacts } from '../../lib/storage';
+import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules,
+         saveUserSettings, getUserSettings, getParseInterval, setParseInterval,
+         getUserContacts, updateUserContacts,
+         getNotificationSettings, saveNotificationSettings,
+         generateTelegramLinkCode, getTelegramStatus } from '../../lib/storage';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Settings.module.css';
 
@@ -73,7 +76,11 @@ export default function Settings() {
   const [isEditingContacts, setIsEditingContacts] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
-
+  const [telegramConnected, setTelegramConnected] = useState(false);
+  const [linkCode, setLinkCode] = useState(null);
+  const [linkCodeExpires, setLinkCodeExpires] = useState(null);
+  const [botLink, setBotLink] = useState('');
+  const [pollingInterval, setPollingInterval] = useState(null);
   const validateEmail = useCallback((email) => {
     if (!email) return true;
     const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
@@ -157,12 +164,18 @@ export default function Settings() {
     try {
       const parseInterval = await getParseInterval();
       const savedSettings = await getUserSettings();
+      const notificationSettings = await getNotificationSettings();
+      const telegramStatus = await getTelegramStatus();
 
       setSettings(prev => ({
         ...prev,
         ...savedSettings,
         notificationInterval: String(parseInterval),
+        emailNotifications: notificationSettings.email_notifications ?? false,
+        telegramNotifications: notificationSettings.telegram_notifications ?? false,
       }));
+
+      setTelegramConnected(telegramStatus.connected);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -195,7 +208,18 @@ export default function Settings() {
     try {
       const intervalSeconds = parseInt(settings.notificationInterval);
       await setParseInterval(intervalSeconds);
-      await saveUserSettings(settings);
+
+      // Сохраняем настройки уведомлений на бэкенд
+      await saveNotificationSettings({
+        telegramNotifications: settings.telegramNotifications,
+        emailNotifications: settings.emailNotifications
+      });
+
+      // Сохраняем остальные настройки локально
+      await saveUserSettings({
+        notificationInterval: settings.notificationInterval,
+        browserNotifications: settings.browserNotifications,
+      });
 
       setSaveMessage('Настройки успешно сохранены!');
       setTimeout(() => setSaveMessage(''), 3000);
@@ -251,6 +275,65 @@ export default function Settings() {
     setIsEditingContacts(false);
     setContactsErrors({});
   };
+
+  const handleGenerateLinkCode = async () => {
+    try {
+      setSaving(true);
+      const data = await generateTelegramLinkCode();
+      setLinkCode(data.code);
+      setBotLink(data.link);
+      setLinkCodeExpires(Date.now() + data.expires_in * 1000);
+
+      // Запускаем опрос статуса подключения
+      startPolling();
+
+      setSaveMessage('Код сгенерирован! Введите его в Telegram боте.');
+    } catch (error) {
+      setSaveMessage('Ошибка: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startPolling = () => {
+    // Очищаем предыдущий интервал если есть
+    if (pollingInterval) clearInterval(pollingInterval);
+
+    const interval = setInterval(async () => {
+      try {
+        const status = await getTelegramStatus();
+        if (status.connected) {
+          setTelegramConnected(true);
+          setLinkCode(null);
+          setLinkCodeExpires(null);
+          clearInterval(interval);
+          setPollingInterval(null);
+          setSaveMessage('Telegram успешно подключен!');
+          setTimeout(() => setSaveMessage(''), 3000);
+        }
+
+        // Проверяем не истек ли код
+        if (linkCodeExpires && Date.now() > linkCodeExpires) {
+          setLinkCode(null);
+          setLinkCodeExpires(null);
+          clearInterval(interval);
+          setPollingInterval(null);
+          setSaveMessage('Код истек. Сгенерируйте новый.');
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 3000); // Проверяем каждые 3 секунды
+
+    setPollingInterval(interval);
+  };
+
+  // Очистка при размонтировании
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, []);
 
   const handleExport = () => {
     const data = {
@@ -370,6 +453,56 @@ export default function Settings() {
                 <span className={`${styles.toggleKnob} ${settings.telegramNotifications ? styles.toggleKnobOn : ''}`} />
               </button>
             </div>
+
+            {/* Telegram connection status */}
+            <div className={styles.settingItem}>
+              <div className={styles.settingInfo}>
+                <Send className={styles.settingIcon} />
+                <div>
+                  <div className={styles.settingLabel}>Статус Telegram</div>
+                  <div className={styles.settingDescription}>
+                    {telegramConnected ? 'Подключено' : 'Не подключено'}
+                  </div>
+                </div>
+              </div>
+              <div className={styles.telegramStatus}>
+                {telegramConnected ? (
+                  <span className={styles.connectedBadge}>✓ Подключено</span>
+                ) : (
+                  <button
+                    onClick={handleGenerateLinkCode}
+                    disabled={saving || linkCode}
+                    className={styles.connectButton}
+                  >
+                    {linkCode ? 'Ожидание...' : 'Подключить Telegram'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Show code and link if they exist */}
+            {linkCode && !telegramConnected && (
+              <div className={styles.telegramLinkSection}>
+                <div className={styles.linkCodeDisplay}>
+                  <div className={styles.codeLabel}>Ваш код для привязки:</div>
+                  <div className={styles.codeValue}>{linkCode}</div>
+                  <div className={styles.codeExpires}>
+                    Код действителен до: {new Date(linkCodeExpires).toLocaleTimeString()}
+                  </div>
+                </div>
+                <div className={styles.botLink}>
+                  <div className={styles.botLabel}>Ссылка на бота:</div>
+                  <a href={botLink} target="_blank" rel="noopener noreferrer" className={styles.botLinkAnchor}>
+                    {botLink}
+                  </a>
+                  <div className={styles.botInstructions}>
+                    1. Перейдите по ссылке<br/>
+                    2. Нажмите Start<br/>
+                    3. Введите код: <strong>{linkCode}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
