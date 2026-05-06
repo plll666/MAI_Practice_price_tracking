@@ -4,6 +4,7 @@ from src.celery_work.app import celery_app
 from src.core.logger import logger
 from src.repositories.celery_sync_repository import CelerySyncRepository
 from src.services.email_service import EmailService
+from src.services.telegram_service import TelegramService
 
 
 @celery_app.task(bind=True, name="src.celery_work.tasks.check_price_alerts")
@@ -12,6 +13,7 @@ def check_price_alerts_task(self) -> dict[str, Any]:
     
     repo = CelerySyncRepository()
     email_service = EmailService()
+    telegram_service = TelegramService()
     
     try:
         subscriptions = repo.get_subscriptions_with_target_price()
@@ -19,19 +21,19 @@ def check_price_alerts_task(self) -> dict[str, Any]:
         
         for sub in subscriptions:
             current_price = repo.get_current_price_for_product(sub["product_id"])
-
+            
             if current_price and current_price <= sub["target_price"]:
                 if sub["notified_at"] is None:
                     product_title = repo.get_product_title(sub["product_id"])
                     product_image = repo.get_product_image(sub["product_id"])
                     product_url = repo.get_product_url(sub["product_id"])
-
+                    
                     savings = sub["target_price"] - current_price
                     message = (
                         f"Цена на \"{product_title}\" снизилась до {current_price:.0f}₽! "
                         f"Вы сэкономите {savings:.0f}₽ (цель: {sub['target_price']:.0f}₽)"
                     )
-
+                    
                     alert_id = repo.create_alert(
                         user_id=sub["user_id"],
                         product_id=sub["product_id"],
@@ -39,7 +41,7 @@ def check_price_alerts_task(self) -> dict[str, Any]:
                         current_price=current_price,
                         target_price=sub["target_price"]
                     )
-
+                    
                     if alert_id > 0:
                         created_alerts.append({
                             "id": alert_id,
@@ -49,25 +51,37 @@ def check_price_alerts_task(self) -> dict[str, Any]:
                             "target_price": sub["target_price"]
                         })
 
-                        user_email = repo.get_user_email(sub["user_id"])
-                        if user_email and product_url:
-                            email_service.send_price_alert_email(
-                                to=user_email,
-                                product_title=product_title,
-                                product_url=product_url,
-                                current_price=current_price,
-                                target_price=sub["target_price"],
-                                image_url=product_image
-                            )
+                        if repo.is_email_notifications_enabled(sub["user_id"]):
+                            user_email = repo.get_user_email(sub["user_id"])
+                            if user_email and product_url:
+                                email_service.send_price_alert_email(
+                                    to=user_email,
+                                    product_title=product_title,
+                                    product_url=product_url,
+                                    current_price=current_price,
+                                    target_price=sub["target_price"],
+                                    image_url=product_image
+                                )
 
+                        if repo.is_telegram_notifications_enabled(sub["user_id"]):
+                            chat_id = repo.get_user_chat_id(sub["user_id"])
+                            if chat_id and product_url:
+                                telegram_service.send_price_alert(
+                                    chat_id=chat_id,
+                                    product_title=product_title,
+                                    product_url=product_url,
+                                    current_price=current_price,
+                                    target_price=sub["target_price"]
+                                )
+                        
                         repo.set_subscription_notified(sub["id"])
-
+                        
                         logger.info(f"Создан алерт для товара {product_title}: {current_price}₽")
             else:
                 if sub["notified_at"] is not None:
                     repo.reset_subscription_notified(sub["id"])
                     logger.info(f"Сброшен флаг уведомления для подписки {sub['id']} - цена поднялась выше цели")
-
+        
         logger.info(f"Создано {len(created_alerts)} алертов")
         return {"status": "success", "alerts": created_alerts}
     except Exception as e:
@@ -82,6 +96,7 @@ def check_price_appeared_task(self) -> dict[str, Any]:
     
     repo = CelerySyncRepository()
     email_service = EmailService()
+    telegram_service = TelegramService()
     
     try:
         created_alerts = []
@@ -122,15 +137,26 @@ def check_price_appeared_task(self) -> dict[str, Any]:
                             "current_price": current_price
                         })
 
-                        user_email = repo.get_user_email(sub["user_id"])
-                        if user_email and product_url:
-                            email_service.send_product_appeared_email(
-                                to=user_email,
-                                product_title=product_title,
-                                product_url=product_url,
-                                current_price=current_price,
-                                image_url=product_image
-                            )
+                        if repo.is_email_notifications_enabled(sub["user_id"]):
+                            user_email = repo.get_user_email(sub["user_id"])
+                            if user_email and product_url:
+                                email_service.send_product_appeared_email(
+                                    to=user_email,
+                                    product_title=product_title,
+                                    product_url=product_url,
+                                    current_price=current_price,
+                                    image_url=product_image
+                                )
+
+                        if repo.is_telegram_notifications_enabled(sub["user_id"]):
+                            chat_id = repo.get_user_chat_id(sub["user_id"])
+                            if chat_id and product_url:
+                                telegram_service.send_product_appeared(
+                                    chat_id=chat_id,
+                                    product_title=product_title,
+                                    product_url=product_url,
+                                    current_price=current_price
+                                )
 
                         repo.set_subscription_notified(sub["id"])
 
