@@ -90,6 +90,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+      dns:
+      - 1.1.1.1
+    extra_hosts:
+      - "redis:172.18.0.2"
+      - "db:172.18.0.3"
+    command: >
+      sh -c "echo 'nameserver 1.1.1.1' > /etc/resolv.conf &&
+             uv run celery -A src.celery_work.app worker -l info -Q parsing"
+    restart: always
+    healthcheck:
+      test: ["CMD", "celery", "-A", "src.celery_work.app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   celery_beat:
     image: kartonkaton/price-tracker-celery-beat:latest
