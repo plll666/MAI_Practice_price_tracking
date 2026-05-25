@@ -33,19 +33,10 @@ def run_spider_sync(url: str) -> dict | None:
         logger.error(f"[run_spider] Scrapy вернул код {process.returncode} для {url[:80]}")
         if process.stderr:
             logger.error(f"[run_spider] stderr: {process.stderr[:2000]}")
-            stderr_file = parent / f"scrapy_error_{abs(hash(url))}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-            with open(stderr_file, "w", encoding="utf-8") as sf:
-                sf.write(process.stderr)
-            logger.info(f"[run_spider] Полный stderr сохранён в: {stderr_file}")
         return None
 
     if not tmp_file.exists():
         logger.warning(f"[run_spider] Файл результата не создан для {url[:80]}")
-        if process.stderr:
-            debug_file = parent / f"scrapy_debug_{abs(hash(url))}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-            with open(debug_file, "w", encoding="utf-8") as df:
-                df.write(f"=== STDOUT ===\n{process.stdout}\n\n=== STDERR ===\n{process.stderr}")
-            logger.info(f"[run_spider] Stdout/stderr сохранены для отладки: {debug_file}")
         return None
 
     try:
@@ -53,22 +44,12 @@ def run_spider_sync(url: str) -> dict | None:
             line = f.readline()
             if not line:
                 logger.warning(f"[run_spider] Пустой файл результата для {url[:80]}")
-                if process.stderr:
-                    debug_file = parent / f"scrapy_empty_{abs(hash(url))}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-                    with open(debug_file, "w", encoding="utf-8") as df:
-                        df.write(f"=== STDOUT ===\n{process.stdout}\n\n=== STDERR ===\n{process.stderr}")
-                    logger.info(f"[run_spider] Stdout/stderr сохранены для отладки: {debug_file}")
                 return None
             data = json.loads(line)
             logger.info(f"[run_spider] Успешно: {url[:80]}, price={data.get('price')}")
             return data
     except json.JSONDecodeError as e:
         logger.error(f"[run_spider] Невалидный JSON для {url[:80]}: {e}")
-        if process.stderr:
-            debug_file = parent / f"scrapy_jsonerr_{abs(hash(url))}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-            with open(debug_file, "w", encoding="utf-8") as df:
-                df.write(f"=== STDOUT ===\n{process.stdout}\n\n=== STDERR ===\n{process.stderr}")
-            logger.info(f"[run_spider] Stdout/stderr сохранены для отладки: {debug_file}")
         return None
     finally:
         tmp_file.unlink(missing_ok=True)
