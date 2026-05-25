@@ -874,6 +874,58 @@
   margin: 0 -1rem;
 }
 
+.intervalRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.intervalLabel {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.intervalSelector {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--gray-100);
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+}
+
+.dark .intervalSelector {
+  background: var(--gray-800);
+}
+
+.intervalButton {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.intervalButton:hover {
+  color: var(--foreground);
+}
+
+.intervalButton.intervalActive {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .intervalButton.intervalActive {
+  background: var(--gray-700);
+}
+
 .noDataMessage {
   display: flex;
   align-items: center;

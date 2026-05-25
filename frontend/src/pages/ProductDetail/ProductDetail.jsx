@@ -22,8 +22,7 @@ import {
   saveAlertRule,
   deleteAlertRule,
   saveProduct,
-  updateTargetPrice,
-  getParseInterval
+  updateTargetPrice
 } from '../../lib/storage';
 import { formatPrice, formatPriceChange } from '../../lib/analytics';
 import {
@@ -45,6 +44,13 @@ const PERIODS = [
   { label: '90 дней', value: 90 },
   { label: '180 дней', value: 180 },
   { label: '360 дней', value: 360 }
+];
+
+const CHART_INTERVALS = [
+  { label: '1 час', value: 3600 },
+  { label: '6 часов', value: 21600 },
+  { label: '1 день', value: 86400 },
+  { label: '7 дней', value: 604800 },
 ];
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -82,7 +88,7 @@ export default function ProductDetail() {
   const [isEditingTargetPrice, setIsEditingTargetPrice] = useState(false);
   const [targetPriceInput, setTargetPriceInput] = useState('');
   const [updatingTargetPrice, setUpdatingTargetPrice] = useState(false);
-  const [parseInterval, setParseInterval] = useState(3600);
+  const [chartInterval, setChartInterval] = useState(3600);
   
   useEffect(() => {
     if (!id || id === 'undefined') return;
@@ -97,16 +103,11 @@ export default function ProductDetail() {
     
     try {
       setLoading(true);
-      const [productData, historyData, rulesData, intervalData] = await Promise.all([
+      const [productData, historyData, rulesData] = await Promise.all([
         getProduct(id),
         getPriceSnapshots(id, selectedPeriod),
-        getAlertRules(id),
-        getParseInterval()
+        getAlertRules(id)
       ]);
-
-      if (intervalData) {
-        setParseInterval(intervalData);
-      }
 
       if (!productData) {
         setProduct(null);
@@ -184,9 +185,9 @@ export default function ProductDetail() {
   };
 
   const chartData = useMemo(() => {
-    if (!snapshots.length || !parseInterval) return [];
+    if (!snapshots.length || !chartInterval) return [];
 
-    const intervalMs = parseInterval * 1000;
+    const intervalMs = chartInterval * 1000;
 
     const sorted = [...snapshots].sort(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -228,7 +229,7 @@ export default function ProductDetail() {
         index: i
       };
     });
-  }, [snapshots, parseInterval]);
+  }, [snapshots, chartInterval]);
 
   const minPrice = priceStats?.min;
   const maxPrice = priceStats?.max;
@@ -484,6 +485,21 @@ export default function ProductDetail() {
                 className={`${styles.periodButton} ${selectedPeriod === period.value ? styles.periodActive : ''}`}
               >
                 {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.intervalRow}>
+          <span className={styles.intervalLabel}>Точка на графике:</span>
+          <div className={styles.intervalSelector}>
+            {CHART_INTERVALS.map(interval => (
+              <button
+                key={interval.value}
+                onClick={() => setChartInterval(interval.value)}
+                className={`${styles.intervalButton} ${chartInterval === interval.value ? styles.intervalActive : ''}`}
+              >
+                {interval.label}
               </button>
             ))}
           </div>
