@@ -22,7 +22,8 @@ import {
   saveAlertRule,
   deleteAlertRule,
   saveProduct,
-  updateTargetPrice
+  updateTargetPrice,
+  getParseInterval
 } from '../../lib/storage';
 import { formatPrice, formatPriceChange } from '../../lib/analytics';
 import {
@@ -81,6 +82,7 @@ export default function ProductDetail() {
   const [isEditingTargetPrice, setIsEditingTargetPrice] = useState(false);
   const [targetPriceInput, setTargetPriceInput] = useState('');
   const [updatingTargetPrice, setUpdatingTargetPrice] = useState(false);
+  const [parseInterval, setParseInterval] = useState(3600);
   
   useEffect(() => {
     if (!id || id === 'undefined') return;
@@ -95,11 +97,16 @@ export default function ProductDetail() {
     
     try {
       setLoading(true);
-      const [productData, historyData, rulesData] = await Promise.all([
+      const [productData, historyData, rulesData, intervalData] = await Promise.all([
         getProduct(id),
         getPriceSnapshots(id, selectedPeriod),
-        getAlertRules(id)
+        getAlertRules(id),
+        getParseInterval()
       ]);
+
+      if (intervalData) {
+        setParseInterval(intervalData);
+      }
 
       if (!productData) {
         setProduct(null);
@@ -177,33 +184,65 @@ export default function ProductDetail() {
   };
 
   const chartData = useMemo(() => {
-    if (!snapshots.length) return [];
+    if (!snapshots.length || !parseInterval) return [];
 
-    return snapshots
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .map((s, i, arr) => {
-        const prevPrice = i > 0 ? arr[i - 1].price : s.price;
-        return {
-          date: new Date(s.timestamp).toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'short'
-          }),
-          fullDate: new Date(s.timestamp).toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-          }),
-          price: s.price,
-          change: i > 0 ? s.price - prevPrice : 0,
-          index: i
-        };
-      });
-  }, [snapshots]);
+    const intervalMs = parseInterval * 1000;
+
+    const sorted = [...snapshots].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    const buckets = {};
+    sorted.forEach(s => {
+      const ts = new Date(s.timestamp).getTime();
+      const bucketKey = Math.floor(ts / intervalMs);
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = { sum: 0, count: 0, timestamp: ts };
+      }
+      buckets[bucketKey].sum += s.price;
+      buckets[bucketKey].count += 1;
+    });
+
+    const bucketKeys = Object.keys(buckets)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    return bucketKeys.map((key, i) => {
+      const bucket = buckets[key];
+      const avgPrice = bucket.sum / bucket.count;
+      const prevAvg = i > 0
+        ? buckets[bucketKeys[i - 1]].sum / buckets[bucketKeys[i - 1]].count
+        : avgPrice;
+      return {
+        date: new Date(bucket.timestamp).toLocaleDateString('ru-RU', {
+          day: 'numeric',
+          month: 'short'
+        }),
+        fullDate: new Date(bucket.timestamp).toLocaleDateString('ru-RU', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        }),
+        price: Math.round(avgPrice),
+        change: avgPrice - prevAvg,
+        index: i
+      };
+    });
+  }, [snapshots, parseInterval]);
 
   const minPrice = priceStats?.min;
   const maxPrice = priceStats?.max;
   const currentPrice = product?.currentPrice;
   const priceDirection = priceStats?.change >= 0 ? 'up' : 'down';
+
+  const chartDomain = useMemo(() => {
+    if (!chartData.length) return [0, 'auto'];
+    const prices = chartData.map(d => d.price);
+    const dataMin = Math.min(...prices);
+    const dataMax = Math.max(...prices);
+    const padding = Math.max((dataMax - dataMin) * 0.05, 50);
+    return [Math.max(0, Math.floor(dataMin - padding)), Math.ceil(dataMax + padding)];
+  }, [chartData]);
 
   const handleDelete = async () => {
     if (confirm(`Удалить товар "${product.name}" из отслеживания?`)) {
@@ -482,7 +521,7 @@ export default function ProductDetail() {
                   tickLine={false}
                   axisLine={{ stroke: 'var(--border)' }}
                   tickFormatter={(value) => `${value.toLocaleString()}₽`}
-                  domain={['dataMin - 100', 'dataMax + 100']}
+                  domain={chartDomain}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 

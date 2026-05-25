@@ -414,3 +414,26 @@ export const getTelegramStatus = async () => {
     return { connected: false, chat_id: null };
   }
 };
+
+export const exportProductsExcel = async () => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`${API_BASE}/products/export`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Ошибка экспорта');
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `price_tracker_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};

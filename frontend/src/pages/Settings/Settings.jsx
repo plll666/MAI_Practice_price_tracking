@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Download, Trash2, Bell, Database, Clock, Mail, Phone, Send, BellRing, Save, CheckCircle, AlertCircle, Edit2, X } from 'lucide-react';
+import { Download, Bell, Database, Clock, Mail, Phone, Send, BellRing, Save, CheckCircle, AlertCircle, Edit2, X } from 'lucide-react';
 import { getProducts, getPriceSnapshots, getAlertEvents, getAlertRules,
          saveUserSettings, getUserSettings, getParseInterval, setParseInterval,
          getUserContacts, updateUserContacts,
          getNotificationSettings, saveNotificationSettings,
-         generateTelegramLinkCode, getTelegramStatus } from '../../lib/storage';
+         generateTelegramLinkCode, getTelegramStatus,
+         exportProductsExcel } from '../../lib/storage';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Settings.module.css';
 
@@ -357,10 +358,12 @@ export default function Settings() {
     URL.revokeObjectURL(url);
   };
 
-  const handleClearData = () => {
-    if (confirm('Вы уверены? Все данные будут удалены безвозвратно.')) {
-      localStorage.clear();
-      window.location.reload();
+  const handleExportExcel = async () => {
+    try {
+      await exportProductsExcel();
+    } catch (error) {
+      setSaveMessage('Ошибка при экспорте: ' + error.message);
+      setTimeout(() => setSaveMessage(''), 3000);
     }
   };
 
@@ -664,23 +667,25 @@ export default function Settings() {
               </div>
               <button onClick={handleExport} className={styles.exportButton}>
                 <Download className={styles.iconSmall} />
-                Экспорт
+                Экспорт JSON
               </button>
             </div>
 
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
-                <Trash2 className={`${styles.settingIcon} ${styles.dangerIcon}`} />
+                <Download className={styles.settingIcon} />
                 <div>
-                  <div className={`${styles.settingLabel} ${styles.dangerLabel}`}>Удалить все данные</div>
-                  <div className={styles.settingDescription}>Полная очистка localStorage</div>
+                  <div className={styles.settingLabel}>Экспорт в Excel</div>
+                  <div className={styles.settingDescription}>Скачать таблицы товаров, цен и магазинов</div>
                 </div>
               </div>
-              <button onClick={handleClearData} className={styles.clearButton}>
-                <Trash2 className={styles.iconSmall} />
-                Очистить
+              <button onClick={handleExportExcel} className={styles.exportButton}>
+                <Download className={styles.iconSmall} />
+                Экспорт XLSX
               </button>
             </div>
+
+
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError, jwt
@@ -20,6 +21,7 @@ from src.repositories.price_history_repository import PriceHistoryRepository
 from src.repositories.user_repository import UserRepository
 from src.services.product_service import ProductService
 from src.services.price_service import PriceService
+from src.services.export_service import build_workbook
 from src.core.security import SECRET_KEY, ALGORITHM
 from src.core.logger import logger
 from src.celery_work.app import celery_app
@@ -117,6 +119,21 @@ async def add_product(
     except Exception as e:
         logger.error(f"Непредвиденная ошибка: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@router.get("/export")
+async def export_products(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Выгрузить данные пользователя в Excel."""
+    logger.info(f"Экспорт данных для пользователя '{current_user.login}'")
+    buf = await build_workbook(current_user.id, db)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=price_tracker_export_{current_user.login}.xlsx"}
+    )
 
 
 @router.get("/", response_model=ProductListResponse)
