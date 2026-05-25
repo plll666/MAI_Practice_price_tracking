@@ -47,7 +47,7 @@ class ProbeSpider(scrapy.Spider):
         await page.route(bad_stuff, lambda route: route.abort())
         await self.stealth_config.apply_stealth_async(page)
 
-        await page.setExtraHTTPHeaders({
+        await page.set_extra_http_headers({
             "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
         })
 

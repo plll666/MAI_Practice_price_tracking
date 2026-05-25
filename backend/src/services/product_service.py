@@ -18,7 +18,7 @@ class ProductService:
             logger.info(f"Запуск парсинга для URL: {url_str}")
             
             task = celery_app.send_task(
-                "src.celery.tasks.parse_url",
+                "src.celery_work.tasks.parse_url",
                 args=[url_str, user_id],
                 queue="parsing"
             )
