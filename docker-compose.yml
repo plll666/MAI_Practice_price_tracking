@@ -178,7 +178,14 @@ services:
       - ./backend:/app
       - /app/.venv
     working_dir: /app
-    command: uv run celery -A src.celery_work.app worker -l info -Q parsing
+    dns:
+      - 1.1.1.1
+    extra_hosts:
+      - "redis:172.18.0.2"
+      - "db:172.18.0.3"
+    command: >
+      sh -c "echo 'nameserver 1.1.1.1' > /etc/resolv.conf &&
+             uv run celery -A src.celery_work.app worker -l info -Q parsing"
     restart: always
     healthcheck:
       test: ["CMD", "celery", "-A", "src.celery_work.app", "inspect", "ping"]
