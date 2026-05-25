@@ -1,16 +1,46 @@
 /* src/components/Sidebar.module.css */
 .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 100;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
   width: 16rem;
   background-color: var(--card);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  transition: background-color 0.2s;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+@media (min-width: 769px) {
+  .sidebar {
+    position: static;
+    transform: none;
+    box-shadow: none;
+    height: auto;
+  }
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   padding: 1.5rem;
   border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 769px) {
+  .logo {
+    display: block;
+  }
 }
 
 .logoContent {
@@ -35,6 +65,15 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
   margin-top: 0.5rem;
+  width: 100%;
+  order: 1;
+}
+
+@media (min-width: 769px) {
+  .logoSubtext {
+    width: auto;
+    order: 0;
+  }
 }
 
 .nav {
@@ -139,7 +178,7 @@
 }
 
 .closeButton {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.25rem;
@@ -159,35 +198,8 @@
   background-color: var(--gray-700);
 }
 
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
+@media (min-width: 769px) {
   .closeButton {
-    display: flex;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .logoSubtext {
-    width: 100%;
-    order: 1;
+    display: none;
   }
 }
