@@ -268,7 +268,7 @@ export default function Analytics() {
         <div className={styles.chartCard}>
           {trendChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={trendChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                 <defs>
                   <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -361,7 +361,7 @@ export default function Analytics() {
           <div className={styles.chartCard}>
             {histogramData.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={histogramData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+                <BarChart data={histogramData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis
                     dataKey="name"
@@ -402,7 +402,7 @@ export default function Analytics() {
         <div className={styles.chartCard}>
           {timelineData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <ScatterChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis
                   dataKey="date"

@@ -8,6 +8,18 @@
   .container {
     padding: 1rem;
   }
+
+  .header {
+    margin-bottom: 1rem;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
 }
 
 /* Header */

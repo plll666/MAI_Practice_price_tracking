@@ -8,6 +8,28 @@
   .container {
     padding: 1rem;
   }
+
+  .header {
+    margin-bottom: 1rem;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .settingItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .select {
+    width: 100%;
+  }
 }
 
 .header {
