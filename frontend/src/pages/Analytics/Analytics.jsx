@@ -317,7 +317,8 @@ export default function Analytics() {
           <div className={styles.chartCard}>
             {shopChartData.length > 0 ? (
               <div className={styles.pieContainer}>
-                <ResponsiveContainer width="60%" height={280}>
+                <div className={styles.pieChartWrapper}>
+                  <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
                       data={shopChartData}
@@ -335,6 +336,7 @@ export default function Analytics() {
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
+                </div>
                 <div className={styles.pieLegend}>
                   {shopChartData.map((entry, index) => (
                     <div key={index} className={styles.legendItem}>

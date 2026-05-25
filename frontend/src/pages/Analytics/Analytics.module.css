@@ -265,6 +265,11 @@
   gap: 1rem;
 }
 
+.pieChartWrapper {
+  width: 60%;
+  flex-shrink: 0;
+}
+
 .pieLegend {
   flex: 1;
   display: flex;
@@ -575,4 +580,67 @@
   text-align: center;
   color: var(--muted-foreground);
   font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .periodSelector {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .statValue {
+    font-size: 1.125rem;
+  }
+
+  .statIconWrapper {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .statIcon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .chartCard {
+    padding: 1rem;
+  }
+
+  .chartSection {
+    margin-bottom: 1rem;
+  }
+
+  .pieContainer {
+    flex-direction: column;
+  }
+
+  .pieChartWrapper {
+    width: 100%;
+  }
+
+  .noData {
+    height: 120px;
+  }
+
+  .topItem {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .topImage {
+    width: 2rem;
+    height: 2rem;
+  }
 }
