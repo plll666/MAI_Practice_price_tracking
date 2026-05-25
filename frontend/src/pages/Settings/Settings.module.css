@@ -4,6 +4,12 @@
   margin: 0 auto;
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+}
+
 .header {
   margin-bottom: 2rem;
 }
@@ -627,7 +633,8 @@
   background-color: var(--background);
   color: var(--foreground);
   font-size: 0.875rem;
-  width: 250px;
+  width: 100%;
+  max-width: 250px;
 }
 
 .input:focus {

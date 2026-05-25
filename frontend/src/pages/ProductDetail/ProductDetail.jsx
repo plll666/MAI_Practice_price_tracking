@@ -491,7 +491,7 @@ export default function ProductDetail() {
         </div>
 
         <div className={styles.intervalRow}>
-          <span className={styles.intervalLabel}>Точка на графике:</span>
+          <span className={styles.intervalLabel}>Частота отображения:</span>
           <div className={styles.intervalSelector}>
             {CHART_INTERVALS.map(interval => (
               <button

@@ -1,11 +1,11 @@
 // src/components/Sidebar.jsx
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, BarChart3, User, Settings, Bell } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, User, Settings, Bell, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getAlertEvents } from '../lib/storage';
 import styles from './Sidebar.module.css';
 
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [unreadAlerts, setUnreadAlerts] = useState(0);
@@ -46,12 +46,15 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
       <div className={styles.logo} onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
         <div className={styles.logoContent}>
           <BarChart3 className={styles.logoIcon} />
           <span className={styles.logoText}>PriceTracker</span>
         </div>
+        <button className={styles.closeButton} onClick={onClose}>
+          <X size={20} />
+        </button>
         <p className={styles.logoSubtext}>Мониторинг цен онлайн-магазинов</p>
       </div>
 
@@ -64,6 +67,7 @@ export function Sidebar() {
               <li key={link.to}>
                 <Link
                   to={link.to}
+                  onClick={onClose}
                   className={`${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}
                 >
                   <Icon className={styles.navIcon} />

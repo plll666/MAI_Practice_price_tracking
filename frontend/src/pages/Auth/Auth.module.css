@@ -8,8 +8,10 @@
   padding: 2rem;
 }
 
-.dark .container {
-  background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-800) 100%);
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
 }
 
 .card {

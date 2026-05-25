@@ -1,5 +1,5 @@
 // src/components/Header.jsx
-import { Bell, User, Moon, Sun, LogOut, TrendingDown, Target } from 'lucide-react';
+import { Menu, Bell, User, Moon, Sun, LogOut, TrendingDown, Target } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +7,7 @@ import { getAlertEvents, markAllAlertsAsRead, markAlertAsRead } from '../lib/sto
 import { showBrowserNotification, requestNotificationPermission, getNotificationPermission } from '../lib/notifications';
 import styles from './Header.module.css';
 
-export function Header() {
+export function Header({ onToggleSidebar }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [alerts, setAlerts] = useState([]);
@@ -91,6 +91,9 @@ export function Header() {
 
   return (
     <header className={styles.header}>
+      <button onClick={onToggleSidebar} className={styles.menuButton} title="Меню">
+        <Menu size={20} />
+      </button>
       {/* Левая часть с текстом */}
       <div className={styles.titleSection}>
         <h1 className={styles.title}>Мониторинг цен онлайн-магазинов</h1>
