@@ -10,6 +10,7 @@
 - **История цен** с графиками изменения за период
 - **Уведомления** о снижении цен до целевой
 - **Уведомления** о появлении товара в наличии (цена была 0, стала > 0)
+- **Уведомления через Telegram-бота** о событиях по товарам
 - **Аналитика** по товарам, магазинам и категориям
 - **Настройка интервалов** парсинга для каждого пользователя
 - **Адаптивный веб-интерфейс** на React с графиками Recharts
@@ -19,7 +20,7 @@
 ### Frontend
 - **React 18** — UI фреймворк
 - **Vite** — сборщик
-- **Tailwind CSS** — стилизация
+- **CSS Modules** — стилизация
 - **React Router** — маршрутизация
 - **Recharts** — графики
 
@@ -72,6 +73,8 @@ docker-compose up --build -d
 | Веб-приложение | http://localhost |
 | API (Swagger) | http://localhost/api/docs |
 | API (ReDoc) | http://localhost/api/redoc |
+| База данных (PostgreSQL) | `localhost:45432` |
+| Redis | `localhost:6379` |
 
 ### 4. Остановка
 
@@ -94,9 +97,19 @@ docker-compose down
 | `HASHIDS_SALT` | Соль для кодирования ID | `your_salt_here` |
 | `HASHIDS_MIN_LENGTH` | Минимальная длина хеша | `8` |
 | `LOG_LEVEL` | Уровень логирования | `INFO` |
+| `LOG_DIR` | Директория логов | `logs` |
+| `SQL_ECHO` | Логирование SQL запросов | `false` |
 | `PARSE_INTERVAL_SECONDS` | Интервал парсинга (сек) | `3600` |
 | `CELERY_BROKER` | Redis URL для Celery | `redis://redis:6379/0` |
 | `CELERY_BACKEND` | Redis URL для результатов | `redis://redis:6379/0` |
+| `SMTP_HOST` | SMTP сервер | `smtp.yandex.ru` |
+| `SMTP_PORT` | Порт SMTP | `465` |
+| `SMTP_USER` | Email для отправки уведомлений | `your_email@yandex.ru` |
+| `SMTP_PASSWORD` | Пароль приложения SMTP | `app_password` |
+| `SMTP_FROM` | Имя отправителя | `MAI Price Tracker` |
+| `TELEGRAM_BOT_TOKEN` | Токен Telegram бота | `bot_token_here` |
+| `TELEGRAM_WEBHOOK_ENABLED` | Включить вебхук | `false` |
+| `TELEGRAM_WEBHOOK_URL` | URL вебхука | `https://yourdomain.com/api/telegram/webhook` |
 
 ## Структура проекта
 
@@ -121,7 +134,8 @@ MAI_Price_Tracker/
 │       ├── pages/              # Страницы приложения
 │       ├── App.jsx             # Главный компонент
 │       └── main.jsx            # Точка входа
-├── docker-compose.yml          # Docker Compose конфигурация
+├── docker-compose.yml          # Docker Compose (локальная разработка)
+├── docker-compose.prod.yml     # Docker Compose (продакшен)
 ├── .env.example                # Пример переменных окружения
 └── README.md                   # Этот файл
 ```
