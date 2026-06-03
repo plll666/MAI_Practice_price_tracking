@@ -64,3 +64,11 @@ async def client(test_db):
 @pytest.fixture
 def sync_client():
     return TestClient(app)
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_celery():
+    from unittest.mock import patch
+    # Мы патчим метод send_task в самом классе Celery.
+    # Это перехватит вызов для ЛЮБОГО объекта Celery в твоем проекте.
+    with patch("celery.Celery.send_task", return_value=None):
+        yield

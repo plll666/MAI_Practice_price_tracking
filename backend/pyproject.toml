@@ -41,6 +41,8 @@ dev = [
     "testcontainers",
     "black",
     "ruff",
+    "PyJWT",
+    "aiosqlite"
 ]
 
 [tool.pytest.ini_options]
