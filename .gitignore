@@ -19,3 +19,7 @@ venv/
 .venv/
 .envcelerybeat-schedule
 celerybeat-schedule
+backend/src/mai_price_tracker.egg-info
+backend/.coverage
+.pytest_cache
+.coverage
