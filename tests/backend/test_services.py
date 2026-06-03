@@ -5,6 +5,7 @@ from src. services. telegram_service import TelegramService
 
 class TestEmailService:
     def test_send_email_success(self):
+        monkeypatch.setenv("SMTP_ENABLED", "True")
         service = EmailService()
         service.smtp_server = MagicMock()
         service.smtp_server.sendmail = MagicMock()
